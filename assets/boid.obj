@@ -1,0 +1,19 @@
+# Exported from Figuro at https://www.figuro.io
+
+mtllib newscene.mtl
+o pyramid5
+v 0 7.679999999999997 0
+v 5.119999999999999 -7.679999999999997 0
+v -5.119999999999999 -7.679999999999997 0
+# 3 vertices
+vt 0.019999999999999997 0.97
+vt -0.019999999999999997 0.97
+vt 0 1.03
+# 3 uvs
+vn 0 0 1
+vn 0 0 1
+vn 0 0 1
+# 3 normals
+usemtl ffe599
+f 1/3/1 3/2/3 2/1/2 
+# 1 polygons

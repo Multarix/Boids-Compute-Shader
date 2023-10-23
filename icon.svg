@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="500"
+   height="500"
+   viewBox="0 0 132.29166 132.29167"
+   version="1.1"
+   id="svg1"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="px"
+     showguides="true">
+    <sodipodi:guide
+       position="0,132.29167"
+       orientation="0,-1"
+       id="guide1"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="132.29166,0"
+       orientation="0,-1"
+       id="guide2"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="0,0"
+       orientation="1,0"
+       id="guide3"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="132.29166,132.29167"
+       orientation="1,0"
+       id="guide4"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1">
+    <inkscape:path-effect
+       effect="fillet_chamfer"
+       id="path-effect4"
+       is_visible="true"
+       lpeversion="1"
+       nodesatellites_param="F,0,0,1,0,10,0,1 @ F,0,0,1,0,10,0,1 @ F,0,0,1,0,10,0,1 @ F,0,0,1,0,10,0,1"
+       radius="10"
+       unit="px"
+       method="auto"
+       mode="F"
+       chamfer_steps="1"
+       flexible="false"
+       use_knot_distance="true"
+       apply_no_radius="true"
+       apply_with_radius="true"
+       only_selected="false"
+       hide_knots="false" />
+  </defs>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Layer 2">
+    <path
+       id="rect4"
+       style="fill:#0e1425;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="M 13.872015,3.8720152 H 118.41965 a 10,10 45 0 1 10,9.9999998 V 118.41965 a 10,10 135 0 1 -10,10 H 13.872015 a 10,10 45 0 1 -10.0000002,-10 V 13.872015 A 10,10 135 0 1 13.872015,3.8720152 Z"
+       inkscape:path-effect="#path-effect4"
+       inkscape:original-d="M 3.8720148,3.8720152 H 128.41965 V 128.41965 H 3.8720148 Z" />
+  </g>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       style="fill:#71dbff;fill-opacity:1;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="M 94.686687,64.315898 105.19292,92.336585 80.997433,74.72641 Z"
+       id="path1" />
+    <path
+       style="fill:#43ffff;fill-opacity:1;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="m 95.048477,97.452881 16.343993,25.068179 -13.721988,-5.9659 -13.72199,-5.96589 z"
+       id="path1-7"
+       sodipodi:nodetypes="ccccc" />
+    <path
+       style="fill:#3895ff;fill-opacity:1;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="m 106.93008,30.607181 8.8325,28.592421 -23.112856,-19.008813 z"
+       id="path1-39"
+       sodipodi:nodetypes="cccc" />
+    <path
+       style="fill:#3fc3ff;fill-opacity:1;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="M 68.91013,37.429358 76.481363,66.381319 54.223566,46.378068 Z"
+       id="path1-1" />
+    <path
+       style="fill:#097aff;fill-opacity:1;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="M 33.929532,45.451981 49.707497,70.880225 22.537873,58.336254 Z"
+       id="path1-2" />
+    <path
+       style="fill:#0054ff;fill-opacity:1;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="M 55.084355,98.581503 72.858585,122.65672 44.767135,112.3412 Z"
+       id="path1-34" />
+    <path
+       style="fill:#00adff;fill-opacity:1;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="M 61.071044,71.962512 74.77111,98.567923 48.688263,83.897382 Z"
+       id="path1-34-9" />
+    <path
+       style="fill:#4470ff;fill-opacity:1;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="M 24.691879,71.694866 37.298301,98.835569 11.833841,83.116127 Z"
+       id="path1-75" />
+    <path
+       style="fill:#a4d3ff;fill-opacity:1;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="M 28.919243,15.792376 46.344349,40.121484 18.404619,29.401824 Z"
+       id="path1-37" />
+    <path
+       style="fill:#5c8fff;fill-opacity:1;stroke-width:0;stroke-dashoffset:0.264567;paint-order:markers fill stroke"
+       d="M 67.086768,9.0744252 80.786834,35.679837 54.703987,21.009296 Z"
+       id="path1-0" />
+  </g>
+</svg>
