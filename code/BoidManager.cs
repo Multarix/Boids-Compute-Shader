@@ -22,7 +22,6 @@ public partial class BoidManager : Node2D {
 	private Rid OutputPositionsBuffer;
 	private Rid GlobalBuffer;
 
-
 	private Vector2 SCREEN_SIZE;
 
 
@@ -64,6 +63,8 @@ public partial class BoidManager : Node2D {
 	private byte[] OutputPositionBytes;
 
 	private RandomNumberGenerator random = new RandomNumberGenerator();
+
+
 
 	private void Setup() {
 		// Set up our main 3 Arrays
@@ -117,6 +118,7 @@ public partial class BoidManager : Node2D {
 		UpdateGlobals();
 	}
 
+
 	
 	// Create the rendering device and the shader.
 	private void InitGPU() {
@@ -126,6 +128,7 @@ public partial class BoidManager : Node2D {
 		RDShaderSpirV ShaderBytecode = ShaderFile.GetSpirV();
 		Shader = RD.ShaderCreateFromSpirV(ShaderBytecode);
 	}
+
 
 	
 	// Easy way to update the globals array
@@ -143,6 +146,7 @@ public partial class BoidManager : Node2D {
 		Globals[10] = SCREEN_SIZE.Y;
 		Globals[11] = BOUNDRY_TURN;
 	}
+
 
 	
 	// Initialize the buffers and uniform sets that will be used by the compute shader.
@@ -173,7 +177,6 @@ public partial class BoidManager : Node2D {
 		Buffer.BlockCopy(InitialBytes, 0, OutputPositionBytes, 0, OutputPositionBytes.Length);
 
 
-
 		// Setting up the input buffers themselves, using only StorageBuffer. Uniforms would probably work too.
 		VelocityBuffer = RD.StorageBufferCreate((uint)VelocityBytes.Length, VelocityBytes);
 		RDUniform VelocityUniform = new RDUniform() {
@@ -199,7 +202,6 @@ public partial class BoidManager : Node2D {
 		GlobalUniform.AddId(GlobalBuffer);
 
 
-
 		// Output Buffers
 		OutputVelocityBuffer = RD.StorageBufferCreate((uint)OutputVelocityBytes.Length, OutputVelocityBytes);
 		RDUniform OutputVelocityUniform = new RDUniform() {
@@ -221,6 +223,7 @@ public partial class BoidManager : Node2D {
 		UniformSet = RD.UniformSetCreate(new Array<RDUniform> { VelocityUniform, PositionUniform, OutputVelocityUniform, OutputPositionsUniform, GlobalUniform }, Shader, 0);
 		Pipeline = RD.ComputePipelineCreate(Shader);
 	}
+
 
 
 	// Update the buffers with the new data.
@@ -246,11 +249,14 @@ public partial class BoidManager : Node2D {
 		// We don't actually need to update the output buffers, they get overwritten by the compute shader each time.
 		// We only had to do that on initial setup so the array was the correct size etc.
 		
+		// Still this is the code to update the output buffers if you wanted to:
 		// RD.BufferUpdate(OutputVelocityBuffer, 0, (uint)OutputVelocityBytes.Length, OutputVelocityBytes);
 		// RD.BufferUpdate(OutputPositionsBuffer, 0, (uint)OutputPositionBytes.Length, OutputPositionBytes);
 	}
 
-
+	
+	
+	// Submits the data to the GPU, then waits for it to finish.
 	private void SubmitToGPU() {
 		// Create the compute list, and all that good stuff.
 		long ComputeList = RD.ComputeListBegin();
@@ -270,6 +276,7 @@ public partial class BoidManager : Node2D {
 	}
 
 
+
 	// Gets the results from the GPU and copies the bytes them into the appropriate arrays
 	private void GetResultsFromGPU() {
 		byte[] PositionBytes = RD.BufferGetData(OutputPositionsBuffer);
@@ -278,6 +285,7 @@ public partial class BoidManager : Node2D {
 		Buffer.BlockCopy(PositionBytes, 0, BoidPositions, 0, PositionBytes.Length);
 		Buffer.BlockCopy(VelocityBytes, 0, BoidVelocity, 0, VelocityBytes.Length);
 	}
+
 
 
 	// Updates the boids positions and rotations, (Parallel may or may not be faster?)
@@ -318,12 +326,14 @@ public partial class BoidManager : Node2D {
 	}
 
 
+
 	// Initial setups for the GUI and what have yous.
 	public override void _Ready() {
 		GUI = GetNode<Gui>("GUI");
 		GUI.Setup(VISUAL_RANGE, SEPERATION_DISTANCE, MOVEMENT_SPEED, COHESION, ALIGNMENT, SEPERATION);
 		Setup();
 	}
+
 
 
 	// So interestingly enough, putting everything in "_Process" rather than "_PhysicsProcess" is faster.
