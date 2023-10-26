@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://btkal4ti014c4"]
 
-[ext_resource type="Script" path="res://code/GUI.gd" id="1_v0to7"]
+[ext_resource type="Script" path="res://code/Gui.cs" id="1_sf8lp"]
 
 [node name="GUI" type="Control"]
 texture_filter = 2
@@ -10,7 +10,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_v0to7")
+script = ExtResource("1_sf8lp")
 
 [node name="View_Distance" type="HSlider" parent="."]
 layout_mode = 0
@@ -176,7 +176,7 @@ text = "NaN"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="BoundryButton" type="CheckButton" parent="."]
+[node name="Boundry_Button" type="CheckButton" parent="."]
 layout_mode = 0
 offset_left = 900.0
 offset_top = 1020.0
@@ -203,10 +203,10 @@ default_color = Color(1, 1, 1, 0.294118)
 width = 1.0
 default_color = Color(1, 1, 1, 0.294118)
 
-[connection signal="value_changed" from="View_Distance" to="." method="_on_view_distance_value_changed"]
-[connection signal="value_changed" from="Seperation_Distance" to="." method="_on_seperation_distance_value_changed"]
-[connection signal="value_changed" from="Move_Speed" to="." method="_on_move_speed_value_changed"]
-[connection signal="value_changed" from="Cohesion" to="." method="_on_cohesion_value_changed"]
-[connection signal="value_changed" from="Alignment" to="." method="_on_alignment_value_changed"]
-[connection signal="value_changed" from="Seperation" to="." method="_on_seperation_value_changed"]
-[connection signal="toggled" from="BoundryButton" to="." method="_on_boundry_button_toggled"]
+[connection signal="value_changed" from="View_Distance" to="." method="OnViewDistanceChanged"]
+[connection signal="value_changed" from="Seperation_Distance" to="." method="OnSeperationDistanceChanged"]
+[connection signal="value_changed" from="Move_Speed" to="." method="OnMoveSpeedChanged"]
+[connection signal="value_changed" from="Cohesion" to="." method="OnCohesionChanged"]
+[connection signal="value_changed" from="Alignment" to="." method="OnAlignmentChanged"]
+[connection signal="value_changed" from="Seperation" to="." method="OnSeperationChanged"]
+[connection signal="toggled" from="Boundry_Button" to="." method="OnBoundryToggled"]

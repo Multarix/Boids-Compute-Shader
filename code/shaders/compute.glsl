@@ -112,28 +112,27 @@ void main() {
 		highp float rightBoundryLine = Global.Screen_X - Global.BoundryWidth;
 		highp float bottomBoundryLine = Global.Screen_Y - Global.BoundryWidth;
 		
-		float GlobalBoundryTurn = 0.2;
 		// Outside the top boundry
 		if(thisBoid.position.y < topBoundryLine){
-			newVelocity.y += GlobalBoundryTurn;
+			newVelocity.y += Global.BoundryTurn;
 		}
 		
 		
 		// Outside the right boundry
 		if(thisBoid.position.x > rightBoundryLine){
-			newVelocity.x -= GlobalBoundryTurn;
+			newVelocity.x -= Global.BoundryTurn;
 		}
 		
 		
 		// Outside the bottom boundry
 		if(thisBoid.position.y > bottomBoundryLine){
-			newVelocity.y -= GlobalBoundryTurn;
+			newVelocity.y -= Global.BoundryTurn;
 		}
 		
 		
 		// Outside the left boundry
 		if(thisBoid.position.x < leftBoundryLine){
-			newVelocity.x += GlobalBoundryTurn;
+			newVelocity.x += Global.BoundryTurn;
 		}
 	}
 	
@@ -155,8 +154,8 @@ void main() {
 	OutputVelocity.boid[trueSaveID + 1] = newVelocity.y;
 	
 	// For Debuggin:
-	// OutputVelocity.boid[trueSaveID] = nearbyBoids;
-	// OutputVelocity.boid[trueSaveID + 1] = TotalBoids;
+	// OutputVelocity.boid[trueSaveID] = Global.Screen_X;
+	// OutputVelocity.boid[trueSaveID + 1] = Global.Screen_Y;
 	
 	OutputPosition.boid[trueSaveID] = newPosition.x;
 	OutputPosition.boid[trueSaveID + 1] = newPosition.y;

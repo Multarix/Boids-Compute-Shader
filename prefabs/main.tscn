@@ -1,17 +1,18 @@
 [gd_scene load_steps=5 format=3 uid="uid://c1fp2vg2r7wjs"]
 
-[ext_resource type="Script" path="res://code/main.gd" id="1_6mmth"]
+[ext_resource type="Script" path="res://code/BoidManager.cs" id="1_dpq6m"]
 [ext_resource type="ArrayMesh" uid="uid://dlcp6sxwsiibw" path="res://assets/boid.obj" id="2_3eq75"]
-[ext_resource type="PackedScene" uid="uid://btkal4ti014c4" path="res://prefabs/scenes/gui.tscn" id="3_mumcm"]
+[ext_resource type="PackedScene" uid="uid://btkal4ti014c4" path="res://prefabs/gui.tscn" id="3_mumcm"]
 
 [sub_resource type="MultiMesh" id="MultiMesh_joscb"]
 use_colors = true
 mesh = ExtResource("2_3eq75")
 
 [node name="Scene" type="Node2D"]
-script = ExtResource("1_6mmth")
+script = ExtResource("1_dpq6m")
+TOTAL_BOIDS = 8000.0
 
-[node name="MultiMesh" type="MultiMeshInstance2D" parent="."]
+[node name="Multi_Mesh" type="MultiMeshInstance2D" parent="."]
 modulate = Color(1, 2, 2, 1)
 multimesh = SubResource("MultiMesh_joscb")
 

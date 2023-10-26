@@ -11,8 +11,8 @@ config_version=5
 [application]
 
 config/name="Boids Advanced"
-run/main_scene="res://prefabs/scenes/main.tscn"
-config/features=PackedStringArray("4.1", "Forward Plus")
+run/main_scene="res://prefabs/main.tscn"
+config/features=PackedStringArray("4.1", "C#", "Forward Plus")
 boot_splash/show_image=false
 boot_splash/fullsize=false
 boot_splash/use_filter=false
@@ -27,6 +27,10 @@ window/size/viewport_height=1080
 
 project/assembly_name="Boids Advanced"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/pinned_debugger_tabs/plugin.cfg")
+
 [filesystem]
 
 import/blender/enabled=false
@@ -35,3 +39,7 @@ import/blender/enabled=false
 
 textures/canvas_textures/default_texture_filter=0
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)
+
+[svgsprite]
+
+compress=false
