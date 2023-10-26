@@ -35,6 +35,7 @@ public partial class Gui : Control {
 	private BoidManager Parent;
 
 
+	// This kinda just sets up the GUI to the defaults... really that's all it does.
 	public void Setup(float VIEW_DISTANCE, float SEPERATION_DISTANCE, float MOVEMENT_SPEED, float COHESION, float ALIGNMENT, float SEPERATION) {
 		ViewDistance_Node = GetNode<HSlider>("View_Distance");
 		ViewDistanceLabel = ViewDistance_Node.GetChild<Label>(1);
@@ -78,7 +79,8 @@ public partial class Gui : Control {
 		SeperationLabel.Text = SEPERATION.ToString();
 	}
 
-
+	
+	// Calculates the boundry line positions and sets them to be visible or not.
 	public void SetupBoundryLines(float Margin, Vector2 Screen) {
 		TopLine.Points = new Vector2[] {
 			new Vector2(Margin, Margin),
@@ -104,7 +106,9 @@ public partial class Gui : Control {
 		RightLine.Visible = BoundryEnabled;
 	}
 
-
+	
+	// The rest of the functions do pretty much what you'd expect them to do.
+	// So I won't make any further comment on them.
 	public void OnViewDistanceChanged(float Value) {
 		ViewDistance_Node.Value = Value;
 		ViewDistanceLabel.Text = Value.ToString();
