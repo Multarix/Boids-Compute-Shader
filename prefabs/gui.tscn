@@ -179,13 +179,23 @@ vertical_alignment = 1
 [node name="Boundry_Button" type="CheckButton" parent="."]
 layout_mode = 0
 offset_left = 900.0
-offset_top = 1020.0
+offset_top = 990.0
 offset_right = 1080.0
-offset_bottom = 1080.0
+offset_bottom = 1050.0
 button_pressed = true
 text = "Enable Boundry"
 flat = true
 alignment = 1
+
+[node name="TotalBoids" type="Label" parent="."]
+layout_mode = 0
+offset_left = 900.0
+offset_top = 30.0
+offset_right = 1080.0
+offset_bottom = 90.0
+text = "Total Boids: NaN"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="TopLine" type="Line2D" parent="."]
 width = 1.0

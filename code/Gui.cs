@@ -1,9 +1,5 @@
-using Godot;
-using GodotPlugins.Game;
-using System;
-using System.ComponentModel;
-
 using Boids;
+using Godot;
 namespace SettingsGUI;
 
 public partial class Gui : Control {
@@ -32,11 +28,13 @@ public partial class Gui : Control {
 	private Line2D LeftLine;
 	private Line2D RightLine;
 
+	private Label TotalCount;
+
 	private BoidManager Parent;
 
 
 	// This kinda just sets up the GUI to the defaults... really that's all it does.
-	public void Setup(float VIEW_DISTANCE, float SEPERATION_DISTANCE, float MOVEMENT_SPEED, float COHESION, float ALIGNMENT, float SEPERATION) {
+	public void Setup(float VIEW_DISTANCE, float SEPERATION_DISTANCE, float MOVEMENT_SPEED, float COHESION, float ALIGNMENT, float SEPERATION, float TOTAL_BOIDS) {
 		ViewDistance_Node = GetNode<HSlider>("View_Distance");
 		ViewDistanceLabel = ViewDistance_Node.GetChild<Label>(1);
 
@@ -61,6 +59,8 @@ public partial class Gui : Control {
 		LeftLine = GetNode<Line2D>("LeftLine");
 		RightLine = GetNode<Line2D>("RightLine");
 
+		TotalCount = GetNode<Label>("TotalBoids");
+
 		Parent = GetParent<BoidManager>();
 
 		ViewDistance_Node.Value = VIEW_DISTANCE;
@@ -70,16 +70,17 @@ public partial class Gui : Control {
 		Alignment_Node.Value = ALIGNMENT;
 		Seperation_Node.Value = SEPERATION;
 
-
 		ViewDistanceLabel.Text = VIEW_DISTANCE.ToString();
 		SeperationDistanceLabel.Text = SEPERATION_DISTANCE.ToString();
 		MoveSpeedLabel.Text = MOVEMENT_SPEED.ToString();
 		CohesionLabel.Text = COHESION.ToString();
 		AlignmentLabel.Text = ALIGNMENT.ToString();
 		SeperationLabel.Text = SEPERATION.ToString();
+
+		TotalCount.Text = "Total Boids: " + TOTAL_BOIDS.ToString();
 	}
 
-	
+
 	// Calculates the boundry line positions and sets them to be visible or not.
 	public void SetupBoundryLines(float Margin, Vector2 Screen) {
 		TopLine.Points = new Vector2[] {
@@ -106,7 +107,7 @@ public partial class Gui : Control {
 		RightLine.Visible = BoundryEnabled;
 	}
 
-	
+
 	// The rest of the functions do pretty much what you'd expect them to do.
 	// So I won't make any further comment on them.
 	public void OnViewDistanceChanged(float Value) {
