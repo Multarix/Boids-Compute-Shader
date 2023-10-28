@@ -24,8 +24,8 @@ public partial class BoidManager : Node2D {
 	private Vector2 SCREEN_SIZE;
 
 
-	[Export(PropertyHint.Range, "100,10000,50")]
-	public float TOTAL_BOIDS = 5000.0f;
+	[Export(PropertyHint.Range, "256,32000,64")]
+	public float TOTAL_BOIDS = 6400;
 
 	[ExportSubgroup("Boid Senses")]
 	[Export]
@@ -257,12 +257,14 @@ public partial class BoidManager : Node2D {
 
 	// Submits the data to the GPU, then waits for it to finish.
 	private void SubmitToGPU() {
+		uint WorkGroupSize = (uint)TOTAL_BOIDS / 64;
+
 		// Create the compute list, and all that good stuff.
 		long ComputeList = RD.ComputeListBegin();
 
 		RD.ComputeListBindComputePipeline(ComputeList, Pipeline);
 		RD.ComputeListBindUniformSet(ComputeList, UniformSet, 0);
-		RD.ComputeListDispatch(ComputeList, xGroups: (uint)TOTAL_BOIDS, yGroups: 1, zGroups: 1);
+		RD.ComputeListDispatch(ComputeList, xGroups: WorkGroupSize, yGroups: 1, zGroups: 1);
 		RD.ComputeListEnd();
 
 		// Submit and sync.
@@ -290,7 +292,6 @@ public partial class BoidManager : Node2D {
 	// Updates the boids positions and rotations, (Parallel may or may not be faster?)
 	private void UpdateBoidPositions() {
 		// You might be able to Parralel.For this, but eh.
-
 		for (int i = 0; i < (int)TOTAL_BOIDS; i++) {
 			int arrayIndex = i * 2; // Again, getting our true index for the arrays.
 
@@ -318,6 +319,14 @@ public partial class BoidManager : Node2D {
 			// And finally updating the multimesh instance.
 			Transform2D transform = new Transform2D(rot, pos);
 			Multimesh.SetInstanceTransform2D(i, transform);
+
+			// Change the color based on the direction of the boid.
+			Vector2 normalisedForColor = vel.Normalized();
+			float x = (normalisedForColor.X + 1) / 2;
+			float y = (normalisedForColor.Y + 1) / 2;
+			float xy = (x + y) / 2;
+			Multimesh.SetInstanceColor(i, new Color(x, xy, y, 1));
+			
 		};
 
 		// GD.Print("Debug | Loc:", BoidPositions[0], " ", BoidPositions[1]);
@@ -350,4 +359,16 @@ public partial class BoidManager : Node2D {
 		GetResultsFromGPU();
 		UpdateBoidPositions();
 	}
+
+	/*
+	public override void _Notification(int what){
+		if (what == NotificationPredelete){
+			purgeGPU();
+		}
+	}
+
+	public override void purgeGPU() {
+		
+	}
+	*/
 }

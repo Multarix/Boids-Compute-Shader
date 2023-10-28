@@ -10,6 +10,7 @@ mesh = ExtResource("2_3eq75")
 
 [node name="Scene" type="Node2D"]
 script = ExtResource("1_dpq6m")
+TOTAL_BOIDS = 20160.0
 
 [node name="Multi_Mesh" type="MultiMeshInstance2D" parent="."]
 modulate = Color(1, 2, 2, 1)

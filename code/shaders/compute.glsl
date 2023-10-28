@@ -6,8 +6,8 @@ struct Boid {
 	highp vec2 position;
 };
 
-
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+// 8x8 is more annoying than just saying 64 in the x group.
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 
 layout(set = 0, binding = 0, std430) restrict readonly buffer velocityBuffer {
@@ -64,8 +64,6 @@ void main() {
 	
 	Boid thisBoid = createBoid(boidID);
 	
-	// double xPosAvg, yPosAvg, xVelAvg, yVelAvg, totalNearby, seperationX, seperationY = 0.0;
-	
 	highp float seperationRangeSquared = Global.SeperationDistance * Global.SeperationDistance;
 	int nearbyBoids = 0;
 	
@@ -77,6 +75,7 @@ void main() {
 	highp vec2 newPosition = vec2(0.0);
 	
 	
+	// Loop through all of them just once
 	for(int i = 0; i < Global.TotalBoids; i++){
 		if(i == boidID) continue; // Skip self (this boid)
 		
@@ -143,7 +142,7 @@ void main() {
 
 	// Limit the boids speed
 	if(length(newVelocity) > 2.0){
-		newVelocity = normalize(newVelocity) * 2.0;
+		newVelocity = normalize(newVelocity) * 2;
 	}
 	
 	newVelocity = newVelocity * Global.MoveSpeed;
@@ -153,9 +152,6 @@ void main() {
 	OutputVelocity.boid[trueSaveID] = newVelocity.x;
 	OutputVelocity.boid[trueSaveID + 1] = newVelocity.y;
 	
-	// For Debuggin:
-	// OutputVelocity.boid[trueSaveID] = Global.Screen_X;
-	// OutputVelocity.boid[trueSaveID + 1] = Global.Screen_Y;
 	
 	OutputPosition.boid[trueSaveID] = newPosition.x;
 	OutputPosition.boid[trueSaveID + 1] = newPosition.y;
