@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://btkal4ti014c4"]
+[gd_scene load_steps=3 format=3 uid="uid://btkal4ti014c4"]
 
 [ext_resource type="Script" path="res://code/Gui.cs" id="1_sf8lp"]
+[ext_resource type="Script" path="res://code/Fps.cs" id="2_qfygl"]
 
 [node name="GUI" type="Control"]
 texture_filter = 2
@@ -189,12 +190,11 @@ alignment = 1
 
 [node name="TotalBoids" type="Label" parent="."]
 layout_mode = 0
-offset_left = 900.0
+offset_left = 10.0
 offset_top = 30.0
-offset_right = 1080.0
-offset_bottom = 90.0
+offset_right = 190.0
+offset_bottom = 56.0
 text = "Total Boids: NaN"
-horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="TopLine" type="Line2D" parent="."]
@@ -212,6 +212,16 @@ default_color = Color(1, 1, 1, 0.294118)
 [node name="RightLine" type="Line2D" parent="."]
 width = 1.0
 default_color = Color(1, 1, 1, 0.294118)
+
+[node name="FPS" type="Label" parent="."]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 5.0
+offset_right = 120.0
+offset_bottom = 31.0
+text = "FPS: NaN"
+vertical_alignment = 1
+script = ExtResource("2_qfygl")
 
 [connection signal="value_changed" from="View_Distance" to="." method="OnViewDistanceChanged"]
 [connection signal="value_changed" from="Seperation_Distance" to="." method="OnSeperationDistanceChanged"]

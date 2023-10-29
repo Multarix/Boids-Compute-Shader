@@ -24,7 +24,7 @@ public partial class BoidManager : Node2D {
 
 	private Vector2 SCREEN_SIZE;
 	
-	[Export(PropertyHint.Range, "256,32000,64")]
+	[Export(PropertyHint.Range, "256,64000,64")]
 	public float TOTAL_BOIDS = 6400;
 
 	[ExportSubgroup("Boid Senses")]
