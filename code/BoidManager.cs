@@ -7,6 +7,7 @@ namespace Boids;
 public partial class BoidManager : Node2D {
 	private MultiMeshInstance2D MultiMeshInstance;
 	private MultiMesh Multimesh;
+	private Rid MultiMeshRID;
 
 	private Gui GUI;
 
@@ -14,16 +15,15 @@ public partial class BoidManager : Node2D {
 	private Rid Shader;
 	private Rid UniformSet;
 	private Rid Pipeline;
-
+	
+	private Rid DataBuffer;
+	private Rid OutputDataBuffer;
 	private Rid VelocityBuffer;
-	private Rid PositionsBuffer;
 	private Rid OutputVelocityBuffer;
-	private Rid OutputPositionsBuffer;
 	private Rid GlobalBuffer;
 
 	private Vector2 SCREEN_SIZE;
-
-
+	
 	[Export(PropertyHint.Range, "256,32000,64")]
 	public float TOTAL_BOIDS = 6400;
 
@@ -51,24 +51,23 @@ public partial class BoidManager : Node2D {
 	[Export]
 	public float COHESION = 0.0005f;
 
-
 	public float BoundryBool;
 
-	private float[] BoidVelocity;
-	private float[] BoidPositions;
+
+	// Arrays for our data.
+	private byte[] BoidDataBytes;
+	private byte[] BoidVelocityBytes;
 	private float[] Globals;
-
-	private byte[] OutputVelocityBytes;
-	private byte[] OutputPositionBytes;
-
-	private RandomNumberGenerator random = new RandomNumberGenerator();
-
 
 
 	private void Setup() {
-		// Set up our main 3 Arrays
-		BoidVelocity = new float[(int)TOTAL_BOIDS * 2];
-		BoidPositions = new float[(int)TOTAL_BOIDS * 2];
+		
+		// Set up our Arrays
+		BoidDataBytes = new byte[(int)TOTAL_BOIDS * 4 * 12];
+		BoidVelocityBytes = new byte[(int)TOTAL_BOIDS * 4 * 2];
+		
+		float[] BoidData;
+		float[] BoidVelocity = new float[(int)TOTAL_BOIDS * 2];
 		Globals = new float[12];
 
 		// Get the size of the screen
@@ -78,6 +77,7 @@ public partial class BoidManager : Node2D {
 		// Setup and store the multimesh as a variable.
 		MultiMeshInstance = GetNode<MultiMeshInstance2D>("Multi_Mesh");
 		Multimesh = MultiMeshInstance.Multimesh;
+		MultiMeshRID = Multimesh.GetRid();
 		Multimesh.InstanceCount = (int)TOTAL_BOIDS;
 
 
@@ -95,15 +95,13 @@ public partial class BoidManager : Node2D {
 			// Because of how I made the mesh, we rotate the down direction so it's facing in the direction of its velocity.
 			Vector2 vel = Vector2.Down.Rotated(rot);
 
-			// Save the positions and velocities to the arrays
-			BoidPositions[trueIndex] = pos.X;
-			BoidPositions[trueIndex + 1] = pos.Y;
+			// Save the velocities to the array.
 			BoidVelocity[trueIndex] = vel.X;
 			BoidVelocity[trueIndex + 1] = vel.Y;
 
-			// Apply the data to the multimesh instance and give it a random color.
+			// Apply the data to the multimesh instance. We can grab the entire buffer afterwards.
 			Multimesh.SetInstanceTransform2D(i, transform);
-			Multimesh.SetInstanceColor(i, new Color(0, 1, random.RandfRange(0, 1), 1));
+			Multimesh.SetInstanceColor(i, Colors.White);
 		}
 
 		// Setup the location of the boundry lines.
@@ -112,9 +110,16 @@ public partial class BoidManager : Node2D {
 
 		// Because I'm lazy, I'm turning the bool into a float so I can hand it over with the other variables for the compute shader
 		BoundryBool = BOUNDRY_ENABLED ? 1.0f : 0.0f;
-
-		// Update the globals to what is currently set.
+		
+		// Setup Globals
 		UpdateGlobals();
+
+		// We can now grab the Buffer from the multimesh...
+		BoidData = RenderingServer.MultimeshGetBuffer(MultiMeshRID);
+
+		// Then turn everything into bytes.
+		Buffer.BlockCopy(BoidData, 0, BoidDataBytes, 0, BoidDataBytes.Length);
+		Buffer.BlockCopy(BoidVelocity, 0, BoidVelocityBytes, 0, BoidVelocityBytes.Length);
 	}
 
 
@@ -150,47 +155,49 @@ public partial class BoidManager : Node2D {
 
 	// Initialize the buffers and uniform sets that will be used by the compute shader.
 	private void InitBuffers() {
-		// Turn the arrays into bytes.
-		byte[] VelocityBytes = new byte[BoidVelocity.Length * 4];
-		Buffer.BlockCopy(BoidVelocity, 0, VelocityBytes, 0, VelocityBytes.Length);
-
-		byte[] PositionBytes = new byte[BoidPositions.Length * 4];
-		Buffer.BlockCopy(BoidPositions, 0, PositionBytes, 0, PositionBytes.Length);
-
 		byte[] GlobalBytes = new byte[Globals.Length * 4];
 		Buffer.BlockCopy(Globals, 0, GlobalBytes, 0, GlobalBytes.Length);
-
-		// Also I'm using a seperate output buffer for the compute shader to write to.
-		// Probably better ways of doing this, but I ain't gonna fix whats not broken.
-		float[] InitialBytes = new float[BoidVelocity.Length];
-		OutputVelocityBytes = new byte[BoidVelocity.Length * 4];
-		OutputPositionBytes = new byte[BoidPositions.Length * 4];
-
-		// Initialise the array to have all values at 0.
-		for (int i = 0; i < InitialBytes.Length; i++) {
-			InitialBytes[i] = 0.0f;
-		}
-
-		// Then copy the array into the output buffers.
-		Buffer.BlockCopy(InitialBytes, 0, OutputVelocityBytes, 0, OutputVelocityBytes.Length);
-		Buffer.BlockCopy(InitialBytes, 0, OutputPositionBytes, 0, OutputPositionBytes.Length);
-
-
-		// Setting up the input buffers themselves, using only StorageBuffer. Uniforms would probably work too.
-		VelocityBuffer = RD.StorageBufferCreate((uint)VelocityBytes.Length, VelocityBytes);
-		RDUniform VelocityUniform = new RDUniform() {
+		
+		byte[] OutputVelocityBytes = new byte[BoidVelocityBytes.Length];
+		Buffer.BlockCopy(BoidVelocityBytes, 0, OutputVelocityBytes, 0, OutputVelocityBytes.Length);
+		
+		byte[] OutputDataBytes = new byte[BoidDataBytes.Length];
+		Buffer.BlockCopy(BoidDataBytes, 0, OutputDataBytes, 0, OutputDataBytes.Length);
+		
+		
+		// Restrict, Readonly
+		DataBuffer = RD.StorageBufferCreate((uint)BoidDataBytes.Length, BoidDataBytes);
+		RDUniform DataUniform = new RDUniform() {
 			UniformType = RenderingDevice.UniformType.StorageBuffer,
 			Binding = 0
 		};
-		VelocityUniform.AddId(VelocityBuffer);
-
-
-		PositionsBuffer = RD.StorageBufferCreate((uint)PositionBytes.Length, PositionBytes);
-		RDUniform PositionUniform = new RDUniform() {
+		DataUniform.AddId(DataBuffer);
+		
+		
+		// Restrict
+		OutputDataBuffer = RD.StorageBufferCreate((uint)OutputDataBytes.Length, OutputDataBytes);
+		RDUniform OutputDataUniform = new RDUniform() {
 			UniformType = RenderingDevice.UniformType.StorageBuffer,
 			Binding = 1
 		};
-		PositionUniform.AddId(PositionsBuffer);
+		OutputDataUniform.AddId(OutputDataBuffer);
+		
+		// Restrict, Readonly
+		VelocityBuffer = RD.StorageBufferCreate((uint)BoidVelocityBytes.Length, BoidVelocityBytes);
+		RDUniform VelocityUniform = new RDUniform() {
+			UniformType = RenderingDevice.UniformType.StorageBuffer,
+			Binding = 2
+		};
+		VelocityUniform.AddId(VelocityBuffer);
+		
+		
+		// Restrict
+		OutputVelocityBuffer = RD.StorageBufferCreate((uint)OutputVelocityBytes.Length, OutputVelocityBytes);
+		RDUniform OutputVelocityUniform = new RDUniform() {
+			UniformType = RenderingDevice.UniformType.StorageBuffer,
+			Binding = 3
+		};
+		OutputVelocityUniform.AddId(OutputVelocityBuffer);
 
 
 		GlobalBuffer = RD.StorageBufferCreate((uint)GlobalBytes.Length, GlobalBytes);
@@ -201,25 +208,8 @@ public partial class BoidManager : Node2D {
 		GlobalUniform.AddId(GlobalBuffer);
 
 
-		// Output Buffers
-		OutputVelocityBuffer = RD.StorageBufferCreate((uint)OutputVelocityBytes.Length, OutputVelocityBytes);
-		RDUniform OutputVelocityUniform = new RDUniform() {
-			UniformType = RenderingDevice.UniformType.StorageBuffer,
-			Binding = 2
-		};
-		OutputVelocityUniform.AddId(OutputVelocityBuffer);
-
-
-		OutputPositionsBuffer = RD.StorageBufferCreate((uint)OutputPositionBytes.Length, OutputPositionBytes);
-		RDUniform OutputPositionsUniform = new RDUniform() {
-			UniformType = RenderingDevice.UniformType.StorageBuffer,
-			Binding = 3
-		};
-		OutputPositionsUniform.AddId(OutputPositionsBuffer);
-
-
 		// Setup the uniform set and pipeline.
-		UniformSet = RD.UniformSetCreate(new Array<RDUniform> { VelocityUniform, PositionUniform, OutputVelocityUniform, OutputPositionsUniform, GlobalUniform }, Shader, 0);
+		UniformSet = RD.UniformSetCreate(new Array<RDUniform> { DataUniform, OutputDataUniform, VelocityUniform, OutputVelocityUniform, GlobalUniform }, Shader, 0);
 		Pipeline = RD.ComputePipelineCreate(Shader);
 	}
 
@@ -230,27 +220,13 @@ public partial class BoidManager : Node2D {
 		// Update global variables...
 		UpdateGlobals();
 
-		// Turn the current arrays into bytes.
-		byte[] VelocityBytes = new byte[BoidVelocity.Length * 4];
-		Buffer.BlockCopy(BoidVelocity, 0, VelocityBytes, 0, VelocityBytes.Length);
-
-		byte[] PositionBytes = new byte[BoidPositions.Length * 4];
-		Buffer.BlockCopy(BoidPositions, 0, PositionBytes, 0, PositionBytes.Length);
-
 		byte[] GlobalBytes = new byte[Globals.Length * 4];
 		Buffer.BlockCopy(Globals, 0, GlobalBytes, 0, GlobalBytes.Length);
 
 		// Update the buffers...
-		_ = RD.BufferUpdate(VelocityBuffer, 0, (uint)VelocityBytes.Length, VelocityBytes);
-		_ = RD.BufferUpdate(PositionsBuffer, 0, (uint)PositionBytes.Length, PositionBytes);
+		_ = RD.BufferUpdate(DataBuffer, 0, (uint)BoidDataBytes.Length, BoidDataBytes);
+		_ = RD.BufferUpdate(VelocityBuffer, 0, (uint)BoidVelocityBytes.Length, BoidVelocityBytes);
 		_ = RD.BufferUpdate(GlobalBuffer, 0, (uint)GlobalBytes.Length, GlobalBytes);
-
-		// We don't actually need to update the output buffers, they get overwritten by the compute shader each time.
-		// We only had to do that on initial setup so the array was the correct size etc.
-
-		// Still this is the code to update the output buffers if you wanted to:
-		// RD.BufferUpdate(OutputVelocityBuffer, 0, (uint)OutputVelocityBytes.Length, OutputVelocityBytes);
-		// RD.BufferUpdate(OutputPositionsBuffer, 0, (uint)OutputPositionBytes.Length, OutputPositionBytes);
 	}
 
 
@@ -278,66 +254,36 @@ public partial class BoidManager : Node2D {
 
 
 
-	// Gets the results from the GPU and copies the bytes them into the appropriate arrays
+	// Gets the results from the GPU and applies it to the multimesh.
 	private void GetResultsFromGPU() {
-		byte[] PositionBytes = RD.BufferGetData(OutputPositionsBuffer);
-		byte[] VelocityBytes = RD.BufferGetData(OutputVelocityBuffer);
-
-		Buffer.BlockCopy(PositionBytes, 0, BoidPositions, 0, PositionBytes.Length);
-		Buffer.BlockCopy(VelocityBytes, 0, BoidVelocity, 0, VelocityBytes.Length);
-	}
-
-
-
-	// Updates the boids positions and rotations, (Parallel may or may not be faster?)
-	private void UpdateBoidPositions() {
-		// You might be able to Parralel.For this, but eh.
-		for (int i = 0; i < (int)TOTAL_BOIDS; i++) {
-			int arrayIndex = i * 2; // Again, getting our true index for the arrays.
-
-			float posX = BoidPositions[arrayIndex];
-			float posY = BoidPositions[arrayIndex + 1];
-
-			// If the boundry is disabled, we wrap the boids positions around the screen.
-			if (!BOUNDRY_ENABLED) {
-				posX = Mathf.Wrap(posX, 0.0f, SCREEN_SIZE.X);
-				posY = Mathf.Wrap(posY, 0.0f, SCREEN_SIZE.Y);
-
-				BoidPositions[arrayIndex] = posX;
-				BoidPositions[arrayIndex + 1] = posY;
-			}
-
-			// Positions rotations etc.
-			Vector2 pos = new Vector2(posX, posY);
-			Vector2 vel = new Vector2(BoidVelocity[arrayIndex], BoidVelocity[arrayIndex + 1]);
-
-			float lastRotation = Multimesh.GetInstanceTransform2D(i).Rotation;
-			float newRotation = Vector2.Down.AngleTo(vel);
-
-			float rot = (lastRotation + newRotation) / 2.0f;
-
-			// And finally updating the multimesh instance.
-			Transform2D transform = new Transform2D(rot, pos);
-			Multimesh.SetInstanceTransform2D(i, transform);
-
-			// Change the color based on the direction of the boid.
-			Vector2 normalisedForColor = vel.Normalized();
-			float x = (normalisedForColor.X + 1) / 2;
-			float y = (normalisedForColor.Y + 1) / 2;
-			float xy = (x + y) / 2;
-			Multimesh.SetInstanceColor(i, new Color(x, xy, y, 1));
-			
-		};
-
-		// GD.Print("Debug | Loc:", BoidPositions[0], " ", BoidPositions[1]);
-		// GD.Print("Debug | Vel:", BoidVelocity[0], " ", BoidVelocity[1]);
+		BoidDataBytes = RD.BufferGetData(OutputDataBuffer);
+		BoidVelocityBytes = RD.BufferGetData(OutputVelocityBuffer);
+		
+		float[] ConvertedBoidData = new float[BoidDataBytes.Length / 4];
+		Buffer.BlockCopy(BoidDataBytes, 0, ConvertedBoidData, 0, BoidDataBytes.Length);
+		
+		
+		// GD.PrintT("Updated Set:", ConvertedBoidData.Length);
+		// GD.PrintT("X:");
+		// GD.PrintT(ConvertedBoidData[0], ConvertedBoidData[1], ConvertedBoidData[2], ConvertedBoidData[3]);
+		// GD.PrintT("Y:");
+		// GD.PrintT(ConvertedBoidData[4], ConvertedBoidData[5], ConvertedBoidData[6], ConvertedBoidData[7]);
+		// GD.PrintT("Color:");
+		// GD.PrintT(ConvertedBoidData[8], ConvertedBoidData[9], ConvertedBoidData[10], ConvertedBoidData[11]);
+		
+		
+		// No need to use a for loop, Our compute shader outputs the data in a valid format for this.
+		// This would be even better if we didn't have to do GPU -> CPU -> GPU. Oh well.
+		// Still, this method is great! It's a lot faster than using a for loop.
+		RenderingServer.MultimeshSetBuffer(MultiMeshRID, ConvertedBoidData);
 	}
 
 
 
 	// Initial setups for the GUI and what have yous.
 	public override void _Ready() {
-		GUI = GetNode<Gui>("GUI");
+		CanvasLayer Canvas = GetNode<CanvasLayer>("CanvasLayer");
+		GUI = Canvas.GetNode<Gui>("GUI");
 		GUI.Setup(VISUAL_RANGE, SEPERATION_DISTANCE, MOVEMENT_SPEED, COHESION, ALIGNMENT, SEPERATION, TOTAL_BOIDS);
 		Setup();
 	}
@@ -357,18 +303,5 @@ public partial class BoidManager : Node2D {
 		// I think this is self explanatory?
 		SubmitToGPU();
 		GetResultsFromGPU();
-		UpdateBoidPositions();
 	}
-
-	/*
-	public override void _Notification(int what){
-		if (what == NotificationPredelete){
-			purgeGPU();
-		}
-	}
-
-	public override void purgeGPU() {
-		
-	}
-	*/
 }

@@ -61,7 +61,8 @@ public partial class Gui : Control {
 
 		TotalCount = GetNode<Label>("TotalBoids");
 
-		Parent = GetParent<BoidManager>();
+		CanvasLayer Canvas = GetParent<CanvasLayer>();
+		Parent = Canvas.GetParent<BoidManager>();
 
 		ViewDistance_Node.Value = VIEW_DISTANCE;
 		SeperationDistance_Node.Value = SEPERATION_DISTANCE;
