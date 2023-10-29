@@ -1,6 +1,6 @@
 ﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Boids Advanced", "Boids Advanced.csproj", "{09FA0BA8-9CAD-4D0B-BAA9-08E509BCDE83}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Boids Compute", "compute.csproj", "{09FA0BA8-9CAD-4D0B-BAA9-08E509BCDE83}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
