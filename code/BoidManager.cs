@@ -126,6 +126,7 @@ public partial class BoidManager : Node2D {
 
 	// Create the rendering device and the shader.
 	private void InitGPU() {
+		// All this stuff is available in the godot documentation
 		RD = RenderingServer.CreateLocalRenderingDevice();
 
 		RDShaderFile ShaderFile = GD.Load<RDShaderFile>("res://code/shaders/compute.glsl");
@@ -136,6 +137,7 @@ public partial class BoidManager : Node2D {
 
 
 	// Easy way to update the globals array
+	// Yes it's ugly. No I don't care.
 	private void UpdateGlobals() {
 		Globals[0] = VISUAL_RANGE;
 		Globals[1] = SEPERATION_DISTANCE;
