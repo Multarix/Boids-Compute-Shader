@@ -190,5 +190,23 @@ void main() {
 	newVelocity = newVelocity * Global.MoveSpeed;
 	newPosition = thisBoid.Position + newVelocity;
 	
+	if(Global.BoundryEnabled == 0){
+		if(newPosition.x < 0.0){
+			newPosition.x += Global.Screen_X;
+		}
+		
+		if(newPosition.x > Global.Screen_X){
+			newPosition.x -= Global.Screen_X;
+		}
+		
+		if(newPosition.y < 0.0){
+			newPosition.y += Global.Screen_Y;
+		}
+		
+		if(newPosition.y > Global.Screen_Y){
+			newPosition.y -= Global.Screen_Y;
+		}
+	}
+	
 	CompileBoid(boidID, newPosition, newVelocity, thisBoid);
 }
