@@ -56,18 +56,13 @@ public partial class BoidManager : Node2D {
 
 	// Arrays for our data.
 	private byte[] BoidDataBytes;
-	private byte[] BoidVelocityBytes;
 	private float[] Globals;
 
 
 	private void Setup() {
 		
 		// Set up our Arrays
-		BoidDataBytes = new byte[(int)TOTAL_BOIDS * 4 * 12];
-		BoidVelocityBytes = new byte[(int)TOTAL_BOIDS * 4 * 2];
-		
-		float[] BoidData;
-		float[] BoidVelocity = new float[(int)TOTAL_BOIDS * 2];
+		BoidDataBytes = new byte[(int)TOTAL_BOIDS * 4 * 16];
 		Globals = new float[12];
 
 		// Get the size of the screen
@@ -83,10 +78,6 @@ public partial class BoidManager : Node2D {
 
 		// Loop until we reached the total number of boids
 		for (int i = 0; i < (int)TOTAL_BOIDS; i++) {
-			// The true index is the index of the array * 2, cause we store the x pos and y pos in the same array
-			// You could modify this to use a vector2, but Godot and C# don't have methods to convert bytes to vectors.
-			int trueIndex = i * 2;
-
 			// Get a random rotation and position
 			float rot = Mathf.DegToRad(GD.Randf() * 360.0f);
 			Vector2 pos = new Vector2(GD.Randf() * SCREEN_SIZE.X, GD.Randf() * SCREEN_SIZE.Y);
@@ -95,13 +86,10 @@ public partial class BoidManager : Node2D {
 			// Because of how I made the mesh, we rotate the down direction so it's facing in the direction of its velocity.
 			Vector2 vel = Vector2.Down.Rotated(rot);
 
-			// Save the velocities to the array.
-			BoidVelocity[trueIndex] = vel.X;
-			BoidVelocity[trueIndex + 1] = vel.Y;
-
 			// Apply the data to the multimesh instance. We can grab the entire buffer afterwards.
 			Multimesh.SetInstanceTransform2D(i, transform);
 			Multimesh.SetInstanceColor(i, Colors.White);
+			Multimesh.SetInstanceCustomData(i, new Color(vel.X, vel.Y, 0.0f, 0.0f));
 		}
 
 		// Setup the location of the boundry lines.
@@ -115,11 +103,10 @@ public partial class BoidManager : Node2D {
 		UpdateGlobals();
 
 		// We can now grab the Buffer from the multimesh...
-		BoidData = RenderingServer.MultimeshGetBuffer(MultiMeshRID);
+		float[] BoidData = RenderingServer.MultimeshGetBuffer(MultiMeshRID);
 
 		// Then turn everything into bytes.
 		Buffer.BlockCopy(BoidData, 0, BoidDataBytes, 0, BoidDataBytes.Length);
-		Buffer.BlockCopy(BoidVelocity, 0, BoidVelocityBytes, 0, BoidVelocityBytes.Length);
 	}
 
 
@@ -160,8 +147,6 @@ public partial class BoidManager : Node2D {
 		byte[] GlobalBytes = new byte[Globals.Length * 4];
 		Buffer.BlockCopy(Globals, 0, GlobalBytes, 0, GlobalBytes.Length);
 		
-		byte[] OutputVelocityBytes = new byte[BoidVelocityBytes.Length];
-		Buffer.BlockCopy(BoidVelocityBytes, 0, OutputVelocityBytes, 0, OutputVelocityBytes.Length);
 		
 		byte[] OutputDataBytes = new byte[BoidDataBytes.Length];
 		Buffer.BlockCopy(BoidDataBytes, 0, OutputDataBytes, 0, OutputDataBytes.Length);
@@ -184,24 +169,8 @@ public partial class BoidManager : Node2D {
 		};
 		OutputDataUniform.AddId(OutputDataBuffer);
 		
+		
 		// Restrict, Readonly
-		VelocityBuffer = RD.StorageBufferCreate((uint)BoidVelocityBytes.Length, BoidVelocityBytes);
-		RDUniform VelocityUniform = new RDUniform() {
-			UniformType = RenderingDevice.UniformType.StorageBuffer,
-			Binding = 2
-		};
-		VelocityUniform.AddId(VelocityBuffer);
-		
-		
-		// Restrict
-		OutputVelocityBuffer = RD.StorageBufferCreate((uint)OutputVelocityBytes.Length, OutputVelocityBytes);
-		RDUniform OutputVelocityUniform = new RDUniform() {
-			UniformType = RenderingDevice.UniformType.StorageBuffer,
-			Binding = 3
-		};
-		OutputVelocityUniform.AddId(OutputVelocityBuffer);
-
-
 		GlobalBuffer = RD.StorageBufferCreate((uint)GlobalBytes.Length, GlobalBytes);
 		RDUniform GlobalUniform = new RDUniform() {
 			UniformType = RenderingDevice.UniformType.StorageBuffer,
@@ -211,7 +180,7 @@ public partial class BoidManager : Node2D {
 
 
 		// Setup the uniform set and pipeline.
-		UniformSet = RD.UniformSetCreate(new Array<RDUniform> { DataUniform, OutputDataUniform, VelocityUniform, OutputVelocityUniform, GlobalUniform }, Shader, 0);
+		UniformSet = RD.UniformSetCreate(new Array<RDUniform> { DataUniform, OutputDataUniform, GlobalUniform }, Shader, 0);
 		Pipeline = RD.ComputePipelineCreate(Shader);
 	}
 
@@ -227,7 +196,6 @@ public partial class BoidManager : Node2D {
 
 		// Update the buffers...
 		_ = RD.BufferUpdate(DataBuffer, 0, (uint)BoidDataBytes.Length, BoidDataBytes);
-		_ = RD.BufferUpdate(VelocityBuffer, 0, (uint)BoidVelocityBytes.Length, BoidVelocityBytes);
 		_ = RD.BufferUpdate(GlobalBuffer, 0, (uint)GlobalBytes.Length, GlobalBytes);
 	}
 
@@ -259,21 +227,23 @@ public partial class BoidManager : Node2D {
 	// Gets the results from the GPU and applies it to the multimesh.
 	private void GetResultsFromGPU() {
 		BoidDataBytes = RD.BufferGetData(OutputDataBuffer);
-		BoidVelocityBytes = RD.BufferGetData(OutputVelocityBuffer);
 		
 		float[] ConvertedBoidData = new float[BoidDataBytes.Length / 4];
 		Buffer.BlockCopy(BoidDataBytes, 0, ConvertedBoidData, 0, BoidDataBytes.Length);
-		
-		
-		// GD.PrintT("Updated Set:", ConvertedBoidData.Length);
-		// GD.PrintT("X:");
-		// GD.PrintT(ConvertedBoidData[0], ConvertedBoidData[1], ConvertedBoidData[2], ConvertedBoidData[3]);
-		// GD.PrintT("Y:");
-		// GD.PrintT(ConvertedBoidData[4], ConvertedBoidData[5], ConvertedBoidData[6], ConvertedBoidData[7]);
-		// GD.PrintT("Color:");
-		// GD.PrintT(ConvertedBoidData[8], ConvertedBoidData[9], ConvertedBoidData[10], ConvertedBoidData[11]);
-		
-		
+
+		/*
+		int id = 0;
+		GD.PrintT("Updated Set:", ConvertedBoidData.Length);
+		GD.PrintT("X:");
+		GD.PrintT(ConvertedBoidData[(id * 16) + 0], ConvertedBoidData[(id * 16) + 1], ConvertedBoidData[(id * 16) + 2], ConvertedBoidData[(id * 16) + 3]);
+		GD.PrintT("Y:");
+		GD.PrintT(ConvertedBoidData[(id * 16) + 4], ConvertedBoidData[(id * 16) + 5], ConvertedBoidData[(id * 16) + 6], ConvertedBoidData[(id * 16) + 7]);
+		GD.PrintT("Color:");
+		GD.PrintT(ConvertedBoidData[(id * 16) + 8], ConvertedBoidData[(id * 16) + 9], ConvertedBoidData[(id * 16) + 10], ConvertedBoidData[(id * 16) + 11]);
+		GD.PrintT("Custom:");
+		GD.PrintT(ConvertedBoidData[(id * 16) + 12], ConvertedBoidData[(id * 16) + 13], ConvertedBoidData[(id * 16) + 14], ConvertedBoidData[(id * 16) + 15]);
+		*/
+
 		// No need to use a for loop, Our compute shader outputs the data in a valid format for this.
 		// This would be even better if we didn't have to do GPU -> CPU -> GPU. Oh well.
 		// Still, this method is great! It's a lot faster than using a for loop.

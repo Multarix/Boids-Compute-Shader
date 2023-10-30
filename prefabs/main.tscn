@@ -6,6 +6,7 @@
 
 [sub_resource type="MultiMesh" id="MultiMesh_joscb"]
 use_colors = true
+use_custom_data = true
 mesh = ExtResource("2_3eq75")
 
 [sub_resource type="Environment" id="Environment_rs8uu"]

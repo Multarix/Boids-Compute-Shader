@@ -1,6 +1,11 @@
 #[compute]
 #version 460
 
+//TODO: Ideas via custom data:
+// Add "flock mask" (boids only want to flock with other boids with the same mask)	- x1 float
+// Add Velocity to the boid buffer													- x2 float
+// Space for 1 more float in the boid buffer...
+
 struct Boid {
 	vec2 Position;
 	vec2 Velocity;
@@ -11,21 +16,12 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 // These layouts are probably bad, but I don't give a damn.
 layout(set = 0, binding = 0, std430) restrict readonly buffer BoidBuffer {
-	float boid[][12];
+	float boid[][16];
 } BoidBufferLookup;
 
 layout(set = 0, binding = 1, std430) restrict buffer BoidUpdateBuffer {
 	float boid[];
 } BoidBufferUpdate;
-
-
-layout(set = 0, binding = 2, std430) restrict readonly buffer BoidVelocityBuffer {
-	vec2 boid[];
-} BoidVelocityLookup;
-
-layout(set = 0, binding = 3, std430) restrict buffer BoidVelocityUpdateBuffer {
-	vec2 boid[];
-} BoidVelocityUpdate;
 
 
 layout(set = 0, binding = 4, std430) restrict readonly buffer globalBuffer {
@@ -62,7 +58,7 @@ vec3 GetColor(vec2 vector){
 
 // Make the boid fit the buffer
 void CompileBoid(int boidID, vec2 newPosition, vec2 newVelocity, Boid thisBoid){
-	int trueID = boidID * 12;
+	int trueID = boidID * 16;
 
 	vec2 velocityNormal = normalize(newVelocity);
 	vec3 color = GetColor(velocityNormal);
@@ -86,8 +82,10 @@ void CompileBoid(int boidID, vec2 newPosition, vec2 newVelocity, Boid thisBoid){
 	BoidBufferUpdate.boid[trueID + 9]	= color.g;
 	BoidBufferUpdate.boid[trueID + 10]	= color.b;
 	// 11 is always 1.0
-	
-	BoidVelocityUpdate.boid[boidID] = newVelocity;
+	BoidBufferUpdate.boid[trueID + 12]	= newVelocity.x;
+	BoidBufferUpdate.boid[trueID + 13]	= newVelocity.y;
+	// 14 is always 0.0 (for now)
+	// 15 is always 0.0 (for now)
 }
 
 
@@ -95,7 +93,7 @@ void CompileBoid(int boidID, vec2 newPosition, vec2 newVelocity, Boid thisBoid){
 Boid CreateBoid(int boidID){
 	Boid boid;
 	boid.Position = vec2(BoidBufferLookup.boid[boidID][3], BoidBufferLookup.boid[boidID][7]);
-	boid.Velocity = BoidVelocityLookup.boid[boidID];
+	boid.Velocity = vec2(BoidBufferLookup.boid[boidID][12], BoidBufferLookup.boid[boidID][13]);
 	return boid;
 }
 
