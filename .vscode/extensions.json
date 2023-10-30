@@ -1,0 +1,9 @@
+{
+	"recommendations": [
+		"ms-dotnettools.csharp",
+		"geforcelegend.vscode-glsl",
+		"ms-dotnettools.vscodeintellicode-csharp",
+		"ms-vscode.mono-debug",
+		"ms-dotnettools.vscode-dotnet-runtime"
+	]
+}
