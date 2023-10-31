@@ -1,13 +1,12 @@
 #[compute]
 #version 460
 
-//TODO: Ideas via custom data:
-// Add "flock mask" (boids only want to flock with other boids with the same mask?)	- x1 float
-// Space for 1 more float in the boid buffer...
 
 struct Boid {
 	vec2 Position;
 	vec2 Velocity;
+	float FlockID;
+	float SpatialBinID;
 };
 
 // 8x8 is more annoying than just saying 64 in the x group.
@@ -39,6 +38,16 @@ layout(set = 0, binding = 4, std430) restrict readonly buffer globalBuffer {
 } Global;
 
 
+bool IsOutOfBounds(vec2 position){
+	if(position.x < 0.0) return true;
+	if(position.x > Global.Screen_X) return true;
+	if(position.y < 0.0) return true;
+	if(position.y > Global.Screen_Y) return true;
+	
+	return false;
+}
+
+
 // Negative angle + 90 degrees (cause how the mesh is rotated)
 float GetAngle(vec2 vector){
 	float angle = atan(vector.y, vector.x);
@@ -57,6 +66,19 @@ vec3 GetColor(vec2 vector){
 
 // Make the boid fit the buffer
 void CompileBoid(int boidID, vec2 newPosition, vec2 newVelocity, Boid thisBoid){
+	// Check if the boid is out of bounds, if it is, set the bin to -1
+	float SpatialBinID = -1.0;
+	
+	if(!IsOutOfBounds(newPosition)){
+		float TotalRows = ceil(Global.Screen_Y / Global.VisualRange);
+		float TotalColumns = ceil(Global.Screen_X / Global.VisualRange);
+		
+		float Row = floor(thisBoid.Position.y / Global.VisualRange);
+		float Column = floor(thisBoid.Position.x / Global.VisualRange);
+		
+		SpatialBinID = (Row * TotalColumns) + Column;
+	}
+	
 	int trueID = boidID * 16;
 
 	vec2 velocityNormal = normalize(newVelocity);
@@ -83,16 +105,18 @@ void CompileBoid(int boidID, vec2 newPosition, vec2 newVelocity, Boid thisBoid){
 	// 11 is always 1.0
 	BoidBufferUpdate.boid[trueID + 12]	= newVelocity.x;
 	BoidBufferUpdate.boid[trueID + 13]	= newVelocity.y;
-	// 14 is always 0.0 (for now)
-	// 15 is always 0.0 (for now)
+	// 14 is the flock ID, don't change it
+	BoidBufferUpdate.boid[trueID + 15]	= SpatialBinID;
 }
 
 
-// Look, this just loads the boid from the buffers into a format we care about.
+// Look, this just loads the boid from the buffers into a format we can actually use.
 Boid CreateBoid(int boidID){
 	Boid boid;
 	boid.Position = vec2(BoidBufferLookup.boid[boidID][3], BoidBufferLookup.boid[boidID][7]);
 	boid.Velocity = vec2(BoidBufferLookup.boid[boidID][12], BoidBufferLookup.boid[boidID][13]);
+	boid.FlockID = BoidBufferLookup.boid[boidID][14];
+	boid.SpatialBinID = BoidBufferLookup.boid[boidID][15];
 	return boid;
 }
 
@@ -114,26 +138,31 @@ void main() {
 	vec2 newPosition = vec2(0.0);
 	
 	
-	// Loop through all other boids just once
-	for(int i = 0; i < Global.TotalBoids; i++){
-		if(i == boidID) continue; // Skip self
+	// Loop through all other boids just once... except if we're outside the boundry, then we prioritize getting back in.
+	if(thisBoid.SpatialBinID != -1.0){
+		for(int i = 0; i < Global.TotalBoids; i++){
+			if(i == boidID) continue; // Skip self
+			
+			Boid otherBoid = CreateBoid(i);
+			if(otherBoid.FlockID != thisBoid.FlockID) continue; // Skip other flocks, maybe make them actively avoid other flocks later idk.
+			// if(otherBoid.SpatialBinID != thisBoid.SpatialBinID) continue; // Skip boids that aren't in the same bin... There is a better way to do this. I'll add it later.
+			
+			float distanceToOtherBoid = distance(thisBoid.Position, otherBoid.Position);
 		
-		Boid otherBoid = CreateBoid(i);
-		
-		float distanceToOtherBoid = distance(thisBoid.Position, otherBoid.Position);
-	
-		if(distanceToOtherBoid < Global.VisualRange){
-			float distanceSquared = distanceToOtherBoid * distanceToOtherBoid;
-		
-			if(distanceSquared < seperationRangeSquared){
-				seperationVector += thisBoid.Position - otherBoid.Position;
-			} else {
-				alignmentVector += otherBoid.Velocity;
-				cohesionVector += otherBoid.Position;
-				nearbyBoids = nearbyBoids + 1;
+			if(distanceToOtherBoid < Global.VisualRange){
+				float distanceSquared = distanceToOtherBoid * distanceToOtherBoid;
+			
+				if(distanceSquared < seperationRangeSquared){
+					seperationVector += thisBoid.Position - otherBoid.Position;
+				} else {
+					alignmentVector += otherBoid.Velocity;
+					cohesionVector += otherBoid.Position;
+					nearbyBoids = nearbyBoids + 1;
+				}
 			}
 		}
 	}
+	
 	
 	if(nearbyBoids > 0){
 		vec2 averagedPosition = cohesionVector /= nearbyBoids;
@@ -174,6 +203,7 @@ void main() {
 		}
 	}
 	
+	
 	// Make sure the boid is going at least 1 unit per frame
 	if(length(newVelocity) < 1.0){
 		newVelocity = normalize(newVelocity);
@@ -191,19 +221,20 @@ void main() {
 		if(newPosition.x < 0.0){
 			newPosition.x += Global.Screen_X;
 		}
-		
+			
 		if(newPosition.x > Global.Screen_X){
 			newPosition.x -= Global.Screen_X;
 		}
-		
+			
 		if(newPosition.y < 0.0){
 			newPosition.y += Global.Screen_Y;
 		}
-		
+			
 		if(newPosition.y > Global.Screen_Y){
 			newPosition.y -= Global.Screen_Y;
 		}
 	}
+
 	
 	CompileBoid(boidID, newPosition, newVelocity, thisBoid);
 }
