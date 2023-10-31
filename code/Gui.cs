@@ -160,5 +160,10 @@ public partial class Gui : Control {
 
 	public void OnHideUIToggled(bool Value) {
 		Visible = Value;
+		if(Value){
+			Input.MouseMode = Input.MouseModeEnum.Visible;
+		} else {
+			Input.MouseMode = Input.MouseModeEnum.Hidden;
+		}
 	}
 }
