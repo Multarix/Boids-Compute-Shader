@@ -2,8 +2,7 @@
 #version 460
 
 //TODO: Ideas via custom data:
-// Add "flock mask" (boids only want to flock with other boids with the same mask)	- x1 float
-// Add Velocity to the boid buffer													- x2 float
+// Add "flock mask" (boids only want to flock with other boids with the same mask?)	- x1 float
 // Space for 1 more float in the boid buffer...
 
 struct Boid {

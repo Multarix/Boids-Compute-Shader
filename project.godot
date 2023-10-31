@@ -39,6 +39,13 @@ enabled=PackedStringArray("res://addons/pinned_debugger_tabs/plugin.cfg")
 
 import/blender/enabled=false
 
+[input]
+
+hide_ui={
+"deadzone": 0.5,
+"events": []
+}
+
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
