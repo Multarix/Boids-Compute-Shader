@@ -18,8 +18,6 @@ public partial class BoidManager : Node2D {
 	
 	private Rid DataBuffer;
 	private Rid OutputDataBuffer;
-	private Rid VelocityBuffer;
-	private Rid OutputVelocityBuffer;
 	private Rid GlobalBuffer;
 
 	private Vector2 SCREEN_SIZE;
@@ -76,6 +74,7 @@ public partial class BoidManager : Node2D {
 		Multimesh.InstanceCount = (int)TOTAL_BOIDS;
 
 
+		// This can 100% be Parallel.For'd, but I'd have to make the buffer like in the compute shader... Faster, but this only happens once.
 		// Loop until we reached the total number of boids
 		for (int i = 0; i < (int)TOTAL_BOIDS; i++) {
 			// Get a random rotation and position
@@ -252,6 +251,22 @@ public partial class BoidManager : Node2D {
 
 
 
+	// Clean up the GPU
+	public void FinGPU() {
+		if(RD == null) return;
+
+		RD.FreeRid(Pipeline);
+		RD.FreeRid(UniformSet);
+		RD.FreeRid(DataBuffer);
+		RD.FreeRid(OutputDataBuffer);
+		RD.FreeRid(GlobalBuffer);
+		RD.FreeRid(Shader);
+		RD.Free();
+		RD = null;
+	}
+
+
+
 	// Initial setups for the GUI and what have yous.
 	public override void _Ready() {
 		CanvasLayer Canvas = GetNode<CanvasLayer>("CanvasLayer");
@@ -275,5 +290,12 @@ public partial class BoidManager : Node2D {
 		// I think this is self explanatory?
 		SubmitToGPU();
 		GetResultsFromGPU();
+	}
+
+
+
+	// Handle quitting, and freeing the Rids.
+	public override void _Notification(int what) {
+		if(what == NotificationWMCloseRequest) FinGPU();
 	}
 }
