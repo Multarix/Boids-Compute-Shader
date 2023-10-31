@@ -157,4 +157,8 @@ public partial class Gui : Control {
 
 		Parent.BoundryBool = Value ? 1.0f : 0.0f;
 	}
+
+	public void OnHideUIToggled(bool Value) {
+		Visible = Value;
+	}
 }

@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://c1fp2vg2r7wjs"]
+[gd_scene load_steps=8 format=3 uid="uid://c1fp2vg2r7wjs"]
 
 [ext_resource type="Script" path="res://code/BoidManager.cs" id="1_dpq6m"]
 [ext_resource type="ArrayMesh" uid="uid://dlcp6sxwsiibw" path="res://assets/boid.obj" id="2_3eq75"]
@@ -8,6 +8,14 @@
 use_colors = true
 use_custom_data = true
 mesh = ExtResource("2_3eq75")
+
+[sub_resource type="InputEventKey" id="InputEventKey_e2pi7"]
+device = -1
+ctrl_pressed = true
+keycode = 85
+
+[sub_resource type="Shortcut" id="Shortcut_i42gi"]
+events = [SubResource("InputEventKey_e2pi7")]
 
 [sub_resource type="Environment" id="Environment_rs8uu"]
 background_mode = 3
@@ -31,5 +39,16 @@ multimesh = SubResource("MultiMesh_joscb")
 
 [node name="GUI" parent="CanvasLayer" instance=ExtResource("3_mumcm")]
 
+[node name="HideUI" type="Button" parent="CanvasLayer"]
+offset_left = -8.0
+offset_top = -8.0
+toggle_mode = true
+button_pressed = true
+shortcut = SubResource("Shortcut_i42gi")
+shortcut_feedback = false
+shortcut_in_tooltip = false
+
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_rs8uu")
+
+[connection signal="toggled" from="CanvasLayer/HideUI" to="CanvasLayer/GUI" method="OnHideUIToggled"]
