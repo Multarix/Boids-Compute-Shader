@@ -24,10 +24,12 @@ public partial class BoidManager : Node2D {
 	
 	[Export(PropertyHint.Range, "256,64000,64")]
 	public float TOTAL_BOIDS = 6400;
+	[Export(PropertyHint.Range, "1,10,1")]
+	public int NUMBER_of_FLOCKS = 1;
 
 	[ExportSubgroup("Boid Senses")]
 	[Export]
-	public float VISUAL_RANGE = 40.0f;
+	public float VISUAL_RANGE = 60.0f;
 	[Export]
 	public float SEPERATION_DISTANCE = 8.0f;
 	[Export]
@@ -56,8 +58,10 @@ public partial class BoidManager : Node2D {
 	private byte[] BoidDataBytes;
 	private float[] Globals;
 
+	private RandomNumberGenerator RNG = new RandomNumberGenerator();
 
 	private void Setup() {
+		RNG.Randomize();
 		
 		// Set up our Arrays
 		BoidDataBytes = new byte[(int)TOTAL_BOIDS * 4 * 16];
@@ -85,10 +89,12 @@ public partial class BoidManager : Node2D {
 			// Because of how I made the mesh, we rotate the down direction so it's facing in the direction of its velocity.
 			Vector2 vel = Vector2.Down.Rotated(rot);
 
+			float FlockID = (float)RNG.RandiRange(0, NUMBER_of_FLOCKS - 1);
+
 			// Apply the data to the multimesh instance. We can grab the entire buffer afterwards.
 			Multimesh.SetInstanceTransform2D(i, transform);
 			Multimesh.SetInstanceColor(i, Colors.White);
-			Multimesh.SetInstanceCustomData(i, new Color(vel.X, vel.Y, 0.0f, 0.0f));
+			Multimesh.SetInstanceCustomData(i, new Color(vel.X, vel.Y, FlockID, 0.0f));
 		}
 
 		// Setup the location of the boundry lines.
@@ -230,18 +236,18 @@ public partial class BoidManager : Node2D {
 		float[] ConvertedBoidData = new float[BoidDataBytes.Length / 4];
 		Buffer.BlockCopy(BoidDataBytes, 0, ConvertedBoidData, 0, BoidDataBytes.Length);
 
-		/*
-		int id = 0;
-		GD.PrintT("Updated Set:", ConvertedBoidData.Length);
-		GD.PrintT("X:");
-		GD.PrintT(ConvertedBoidData[(id * 16) + 0], ConvertedBoidData[(id * 16) + 1], ConvertedBoidData[(id * 16) + 2], ConvertedBoidData[(id * 16) + 3]);
-		GD.PrintT("Y:");
-		GD.PrintT(ConvertedBoidData[(id * 16) + 4], ConvertedBoidData[(id * 16) + 5], ConvertedBoidData[(id * 16) + 6], ConvertedBoidData[(id * 16) + 7]);
-		GD.PrintT("Color:");
-		GD.PrintT(ConvertedBoidData[(id * 16) + 8], ConvertedBoidData[(id * 16) + 9], ConvertedBoidData[(id * 16) + 10], ConvertedBoidData[(id * 16) + 11]);
-		GD.PrintT("Custom:");
-		GD.PrintT(ConvertedBoidData[(id * 16) + 12], ConvertedBoidData[(id * 16) + 13], ConvertedBoidData[(id * 16) + 14], ConvertedBoidData[(id * 16) + 15]);
-		*/
+
+		//int id = 0;
+		//GD.PrintT("Updated Set:", ConvertedBoidData.Length);
+		//GD.PrintT("X:");
+		//GD.PrintT(ConvertedBoidData[(id * 16) + 0], ConvertedBoidData[(id * 16) + 1], ConvertedBoidData[(id * 16) + 2], ConvertedBoidData[(id * 16) + 3]);
+		//GD.PrintT("Y:");
+		//GD.PrintT(ConvertedBoidData[(id * 16) + 4], ConvertedBoidData[(id * 16) + 5], ConvertedBoidData[(id * 16) + 6], ConvertedBoidData[(id * 16) + 7]);
+		//GD.PrintT("Color:");
+		//GD.PrintT(ConvertedBoidData[(id * 16) + 8], ConvertedBoidData[(id * 16) + 9], ConvertedBoidData[(id * 16) + 10], ConvertedBoidData[(id * 16) + 11]);
+		//GD.PrintT("Custom:");
+		//GD.PrintT(ConvertedBoidData[(id * 16) + 12], ConvertedBoidData[(id * 16) + 13], ConvertedBoidData[(id * 16) + 14], ConvertedBoidData[(id * 16) + 15]);
+
 
 		// No need to use a for loop, Our compute shader outputs the data in a valid format for this.
 		// This would be even better if we didn't have to do GPU -> CPU -> GPU. Oh well.
