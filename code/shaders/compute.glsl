@@ -21,6 +21,21 @@ layout(set = 0, binding = 1, std430) restrict buffer BoidUpdateBuffer {
 	float boid[];
 } BoidBufferUpdate;
 
+/*
+layout(set = 0, binding = 2, std430) restrict buffer BoidHashLocationBuffer {
+	float tile[];
+} BoidHashLookup;
+
+
+layout(set = 0, binding = 3, std430) restrict buffer BoidHashUpdateBuffer {
+	float tile[];
+} BoidHashUpdate;
+
+
+layout(set = 0, binding = 4, std430) restrict buffer BoidHashSizeBuffer {
+	float tile[][30];
+} BoidHashSizeLookup;
+*/
 
 layout(set = 0, binding = 4, std430) restrict readonly buffer globalBuffer {
 	float VisualRange;
@@ -38,7 +53,147 @@ layout(set = 0, binding = 4, std430) restrict readonly buffer globalBuffer {
 } Global;
 
 
-bool IsOutOfBounds(vec2 position){
+
+float TotalRows = ceil(Global.Screen_Y / Global.VisualRange);
+float TotalColumns = ceil(Global.Screen_X / Global.VisualRange);
+float totalTiles = TotalRows * TotalColumns;
+
+
+
+// Look, this just loads the boid from the buffers into a format we can actually use.
+Boid createBoid(int boidID){
+	Boid boid;
+	boid.Position = vec2(BoidBufferLookup.boid[boidID][3], BoidBufferLookup.boid[boidID][7]);
+	boid.Velocity = vec2(BoidBufferLookup.boid[boidID][12], BoidBufferLookup.boid[boidID][13]);
+	boid.FlockID = BoidBufferLookup.boid[boidID][14];
+	boid.SpatialBinID = BoidBufferLookup.boid[boidID][15];
+	return boid;
+}
+
+
+
+vec2 calculateVelocity(Boid thisBoid, int boidID){
+	vec2 newVelocity = thisBoid.Velocity;
+
+	// If outside the boundry, we're going to prioritize getting back in by ignoring all other boids.
+	if(thisBoid.SpatialBinID != -1.0){
+		float seperationRangeSquared = Global.SeperationDistance * Global.SeperationDistance;
+		int nearbyBoids = 0;
+		
+		vec2 seperationVector = vec2(0.0);
+		vec2 alignmentVector = vec2(0.0);
+		vec2 cohesionVector = vec2(0.0);
+				
+		// Otherwise loop through all the other boids in existance (n^2 yuck)
+		for(int i = 0; i < Global.TotalBoids; i++){
+			if(i == boidID) continue; // Skip self
+			
+			Boid otherBoid = createBoid(i);
+			if(otherBoid.FlockID != thisBoid.FlockID) continue; // Skip other flocks, maybe make them actively avoid other flocks later idk.
+			// if(otherBoid.SpatialBinID != thisBoid.SpatialBinID) continue; // Skip boids that aren't in the same bin... There is a better way to do this. I'll add it later.
+			
+			float distanceToOtherBoid = distance(thisBoid.Position, otherBoid.Position);
+		
+			if(distanceToOtherBoid < Global.VisualRange){
+				float distanceSquared = distanceToOtherBoid * distanceToOtherBoid;
+			
+				if(distanceSquared < seperationRangeSquared){
+					seperationVector += thisBoid.Position - otherBoid.Position;
+				} else {
+					alignmentVector += otherBoid.Velocity;
+					cohesionVector += otherBoid.Position;
+					nearbyBoids = nearbyBoids + 1;
+				}
+			}
+		}
+		
+		if(nearbyBoids > 0){
+			vec2 averagedPosition = cohesionVector /= nearbyBoids;
+			vec2 averagedVelocity = alignmentVector /= nearbyBoids;
+			
+			newVelocity = (newVelocity + (averagedPosition - thisBoid.Position) * Global.CohesionWeight + (averagedVelocity - thisBoid.Velocity) * Global.AlignmentWeight);
+			newVelocity = newVelocity + (seperationVector * Global.SeperationWeight);
+		}
+	}
+	
+	return newVelocity;
+}
+
+
+
+vec2 returnToBoundry(Boid thisBoid, vec2 velocity){
+	float topBoundryLine = Global.BoundryWidth;
+	float leftBoundryLine = Global.BoundryWidth;
+	float rightBoundryLine = Global.Screen_X - Global.BoundryWidth;
+	float bottomBoundryLine = Global.Screen_Y - Global.BoundryWidth;
+	
+	// Outside the top boundry
+	if(thisBoid.Position.y < topBoundryLine){
+		velocity.y += Global.BoundryTurn;
+	}
+	
+	
+	// Outside the right boundry
+	if(thisBoid.Position.x > rightBoundryLine){
+		velocity.x -= Global.BoundryTurn;
+	}
+	
+	
+	// Outside the bottom boundry
+	if(thisBoid.Position.y > bottomBoundryLine){
+		velocity.y -= Global.BoundryTurn;
+	}
+	
+	
+	// Outside the left boundry
+	if(thisBoid.Position.x < leftBoundryLine){
+		velocity.x += Global.BoundryTurn;
+	}
+	
+	return velocity;
+}
+
+
+
+vec2 containSpeed(vec2 velocity){
+		// Make sure the boid is going at least 1 unit per frame
+	if(length(velocity) < 1.0){
+		velocity = normalize(velocity);
+	}
+
+	// Limit the boids speed
+	if(length(velocity) > 2.0){
+		velocity = normalize(velocity) * 2;
+	}
+	
+	return velocity;
+}
+
+
+
+vec2 wrapScreen(vec2 position){
+	if(position.x < 0.0){
+		position.x += Global.Screen_X;
+	}
+			
+	if(position.x > Global.Screen_X){
+		position.x -= Global.Screen_X;
+	}
+			
+	if(position.y < 0.0){
+		position.y += Global.Screen_Y;
+	}
+			
+	if(position.y > Global.Screen_Y){
+		position.y -= Global.Screen_Y;
+	}
+		
+	return position;
+}
+
+
+
+bool isOutOfBounds(vec2 position){
 	if(position.x < 0.0) return true;
 	if(position.x > Global.Screen_X) return true;
 	if(position.y < 0.0) return true;
@@ -48,15 +203,9 @@ bool IsOutOfBounds(vec2 position){
 }
 
 
-// Negative angle + 90 degrees (cause how the mesh is rotated)
-float GetAngle(vec2 vector){
-	float angle = atan(vector.y, vector.x);
-	return -angle + radians(90);
-}
-
 
 // Pretty Colors!
-vec3 GetColor(vec2 vector){
+vec3 getColor(vec2 vector){
 	float r = (vector.x + 1) / 2;
 	float b = (vector.y + 1) / 2;
 	float g = (r + b) / 2;
@@ -64,17 +213,23 @@ vec3 GetColor(vec2 vector){
 }
 
 
+
+// Negative angle + 90 degrees (cause how the mesh is rotated)
+float getAngle(vec2 vector){
+	float angle = atan(vector.y, vector.x);
+	return -angle + radians(90);
+}
+
+
+
 // Make the boid fit the buffer
-void CompileBoid(int boidID, vec2 newPosition, vec2 newVelocity, Boid thisBoid){
+void compileBoid(int boidID, vec2 newPosition, vec2 newVelocity){
 	// Check if the boid is out of bounds, if it is, set the bin to -1
 	float SpatialBinID = -1.0;
 	
-	if(!IsOutOfBounds(newPosition)){
-		float TotalRows = ceil(Global.Screen_Y / Global.VisualRange);
-		float TotalColumns = ceil(Global.Screen_X / Global.VisualRange);
-		
-		float Row = floor(thisBoid.Position.y / Global.VisualRange);
-		float Column = floor(thisBoid.Position.x / Global.VisualRange);
+	if(!isOutOfBounds(newPosition)){
+		float Row = floor(newPosition.y / Global.VisualRange);
+		float Column = floor(newPosition.x / Global.VisualRange);
 		
 		SpatialBinID = (Row * TotalColumns) + Column;
 	}
@@ -82,9 +237,9 @@ void CompileBoid(int boidID, vec2 newPosition, vec2 newVelocity, Boid thisBoid){
 	int trueID = boidID * 16;
 
 	vec2 velocityNormal = normalize(newVelocity);
-	vec3 color = GetColor(velocityNormal);
+	vec3 color = getColor(velocityNormal);
 	
-	float rotation = GetAngle(velocityNormal);
+	float rotation = getAngle(velocityNormal);
 	
 	// Imma be honest, idk how this cr/ sr stuff works
 	// But it's what the Godot Engine source does to set the rotation in a Transform2D...
@@ -110,131 +265,31 @@ void CompileBoid(int boidID, vec2 newPosition, vec2 newVelocity, Boid thisBoid){
 }
 
 
-// Look, this just loads the boid from the buffers into a format we can actually use.
-Boid CreateBoid(int boidID){
-	Boid boid;
-	boid.Position = vec2(BoidBufferLookup.boid[boidID][3], BoidBufferLookup.boid[boidID][7]);
-	boid.Velocity = vec2(BoidBufferLookup.boid[boidID][12], BoidBufferLookup.boid[boidID][13]);
-	boid.FlockID = BoidBufferLookup.boid[boidID][14];
-	boid.SpatialBinID = BoidBufferLookup.boid[boidID][15];
-	return boid;
-}
-
 
 void main() {
 	// I was lazy and decided to just use x invocations.
 	int boidID = int(gl_GlobalInvocationID.x);
 	
-	Boid thisBoid = CreateBoid(boidID);
-	
-	float seperationRangeSquared = Global.SeperationDistance * Global.SeperationDistance;
-	int nearbyBoids = 0;
-	
-	vec2 seperationVector = vec2(0.0);
-	vec2 alignmentVector = vec2(0.0);
-	vec2 cohesionVector = vec2(0.0);
-	
-	vec2 newVelocity = thisBoid.Velocity;
-	vec2 newPosition = vec2(0.0);
-	
-	
-	// Loop through all other boids just once... except if we're outside the boundry, then we prioritize getting back in.
-	if(thisBoid.SpatialBinID != -1.0){
-		for(int i = 0; i < Global.TotalBoids; i++){
-			if(i == boidID) continue; // Skip self
-			
-			Boid otherBoid = CreateBoid(i);
-			if(otherBoid.FlockID != thisBoid.FlockID) continue; // Skip other flocks, maybe make them actively avoid other flocks later idk.
-			// if(otherBoid.SpatialBinID != thisBoid.SpatialBinID) continue; // Skip boids that aren't in the same bin... There is a better way to do this. I'll add it later.
-			
-			float distanceToOtherBoid = distance(thisBoid.Position, otherBoid.Position);
+	Boid thisBoid = createBoid(boidID);
+	vec2 newVelocity = calculateVelocity(thisBoid, boidID);
 		
-			if(distanceToOtherBoid < Global.VisualRange){
-				float distanceSquared = distanceToOtherBoid * distanceToOtherBoid;
-			
-				if(distanceSquared < seperationRangeSquared){
-					seperationVector += thisBoid.Position - otherBoid.Position;
-				} else {
-					alignmentVector += otherBoid.Velocity;
-					cohesionVector += otherBoid.Position;
-					nearbyBoids = nearbyBoids + 1;
-				}
-			}
-		}
-	}
-	
-	
-	if(nearbyBoids > 0){
-		vec2 averagedPosition = cohesionVector /= nearbyBoids;
-		vec2 averagedVelocity = alignmentVector /= nearbyBoids;
-		
-		newVelocity = (newVelocity + (averagedPosition - thisBoid.Position) * Global.CohesionWeight + (averagedVelocity - thisBoid.Velocity) * Global.AlignmentWeight);
-		newVelocity = newVelocity + (seperationVector * Global.SeperationWeight);
-	}
-	
-	
+	// Check if out of bounds, if so, return turn towards the boundry.
 	if(Global.BoundryEnabled == 1){
-		float topBoundryLine = Global.BoundryWidth;
-		float leftBoundryLine = Global.BoundryWidth;
-		float rightBoundryLine = Global.Screen_X - Global.BoundryWidth;
-		float bottomBoundryLine = Global.Screen_Y - Global.BoundryWidth;
-		
-		// Outside the top boundry
-		if(thisBoid.Position.y < topBoundryLine){
-			newVelocity.y += Global.BoundryTurn;
-		}
-		
-		
-		// Outside the right boundry
-		if(thisBoid.Position.x > rightBoundryLine){
-			newVelocity.x -= Global.BoundryTurn;
-		}
-		
-		
-		// Outside the bottom boundry
-		if(thisBoid.Position.y > bottomBoundryLine){
-			newVelocity.y -= Global.BoundryTurn;
-		}
-		
-		
-		// Outside the left boundry
-		if(thisBoid.Position.x < leftBoundryLine){
-			newVelocity.x += Global.BoundryTurn;
-		}
+		newVelocity = returnToBoundry(thisBoid, newVelocity);
 	}
 	
-	
-	// Make sure the boid is going at least 1 unit per frame
-	if(length(newVelocity) < 1.0){
-		newVelocity = normalize(newVelocity);
-	}
-
-	// Limit the boids speed
-	if(length(newVelocity) > 2.0){
-		newVelocity = normalize(newVelocity) * 2;
-	}
-	
+	// Fix up the boid speed.
+	newVelocity = containSpeed(newVelocity);
 	newVelocity = newVelocity * Global.MoveSpeed;
-	newPosition = thisBoid.Position + newVelocity;
 	
+	// Calculate the new position
+	vec2 newPosition = thisBoid.Position + newVelocity;
+	
+	// Wrap the boid's position if the boundry is disabled.
 	if(Global.BoundryEnabled == 0){
-		if(newPosition.x < 0.0){
-			newPosition.x += Global.Screen_X;
-		}
-			
-		if(newPosition.x > Global.Screen_X){
-			newPosition.x -= Global.Screen_X;
-		}
-			
-		if(newPosition.y < 0.0){
-			newPosition.y += Global.Screen_Y;
-		}
-			
-		if(newPosition.y > Global.Screen_Y){
-			newPosition.y -= Global.Screen_Y;
-		}
+		newPosition = wrapScreen(newPosition);
 	}
-
 	
-	CompileBoid(boidID, newPosition, newVelocity, thisBoid);
+	// Update the boid in the buffer
+	compileBoid(boidID, newPosition, newVelocity);
 }
