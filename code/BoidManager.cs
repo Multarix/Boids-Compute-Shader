@@ -340,16 +340,16 @@ public partial class BoidManager : Node2D {
 		//GD.PrintT("Custom:");
 		//GD.PrintT(ConvertedBoidData[(id * 16) + 12], ConvertedBoidData[(id * 16) + 13], ConvertedBoidData[(id * 16) + 14], ConvertedBoidData[(id * 16) + 15]);
 
-		int[] ConvertedHashData = new int[HashUpdate.Length / 4];
-		Buffer.BlockCopy(HashUpdate, 0, ConvertedHashData, 0, HashUpdate.Length);
+		//int[] ConvertedHashData = new int[HashUpdate.Length / 4];
+		//Buffer.BlockCopy(HashUpdate, 0, ConvertedHashData, 0, HashUpdate.Length);
 
-		int[] CellData = new int[64];
-		for(int i = 0; i < 64; i++) {
-			ConvertedHashData[i] = CellData[i];
-		}
+		//int[] CellData = new int[64];
+		//for(int i = 0; i < 64; i++) {
+		//	ConvertedHashData[i] = CellData[i];
+		//}
 
-		GD.PrintT("HashUpdate:");
-		GD.PrintT(CellData[0]);
+		//GD.PrintT("HashUpdate:");
+		//GD.PrintT(CellData[0]);
 
 
 		// No need to use a for loop, Our compute shader outputs the data in a valid format for this.
