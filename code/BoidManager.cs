@@ -20,12 +20,18 @@ public partial class BoidManager : Node2D {
 	private Rid OutputDataBuffer;
 	private Rid GlobalBuffer;
 
+	private Rid HashLookupBuffer;
+	private Rid HashUpdateBuffer;
+	private Rid HashSizeBuffer;
+
 	private Vector2 SCREEN_SIZE;
 	
-	[Export(PropertyHint.Range, "256,64000,64")]
-	public float TOTAL_BOIDS = 6400;
+	[Export(PropertyHint.Range, "256,96000,64")]
+	public float TOTAL_BOIDS = 64000;
 	[Export(PropertyHint.Range, "1,10,1")]
 	public int NUMBER_of_FLOCKS = 1;
+	[Export(PropertyHint.Range, "1,3,0.1")]
+	public float BOID_SIZE = 1;
 
 	[ExportSubgroup("Boid Senses")]
 	[Export]
@@ -39,9 +45,9 @@ public partial class BoidManager : Node2D {
 	[Export]
 	public bool BOUNDRY_ENABLED = true;
 	[Export]
-	public float BOUNDRY_WIDTH = 100.0f;
+	public float BOUNDRY_WIDTH = -5.0f;
 	[Export]
-	public float BOUNDRY_TURN = 0.2f;
+	public float BOUNDRY_TURN = 0.25f;
 
 	[ExportSubgroup("Initial Weights")]
 	[Export]
@@ -52,24 +58,68 @@ public partial class BoidManager : Node2D {
 	public float COHESION = 0.0005f;
 
 	public float BoundryBool;
-
+	
+	private int TotalCells;
 
 	// Arrays for our data.
 	private byte[] BoidDataBytes;
 	private float[] Globals;
 
+	// Arrays for our spatial hashing.
+	private byte[] HashLookup;
+	private byte[] HashUpdate;
+	private byte[] HashSize;
+
+
 	private RandomNumberGenerator RNG = new RandomNumberGenerator();
 
-	private void Setup() {
-		RNG.Randomize();
-		
-		// Set up our Arrays
-		BoidDataBytes = new byte[(int)TOTAL_BOIDS * 4 * 16];
-		Globals = new float[12];
+	private void BuildMesh() {
+		Vector3[] points = new Vector3[]{
+			new Vector3(-1 * BOID_SIZE, -1 * BOID_SIZE, 0),
+			new Vector3(-1 * BOID_SIZE, 1 * BOID_SIZE, 0),
+			new Vector3(2 * BOID_SIZE, 0, 0),
+		};
 
-		// Get the size of the screen
-		// this is done this way so we can change the display size later if we wanted.
+		ArrayMesh arrayMesh = new ArrayMesh();
+		Godot.Collections.Array arrays = new Godot.Collections.Array();
+		arrays.Resize((int)Mesh.ArrayType.Max);
+		arrays[(int)Mesh.ArrayType.Vertex] = points;
+
+		arrayMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
+
+		Multimesh.Mesh = arrayMesh;
+	}
+
+
+	private void Setup() {
+		// Get the size of the screen, and the total cells
 		SCREEN_SIZE = GetViewportRect().Size;
+		int TotalColumns = (int)Math.Ceiling(SCREEN_SIZE.X / 60.0);
+		int TotalRows = (int)Math.Ceiling(SCREEN_SIZE.Y / 60.0);
+		TotalCells = TotalColumns * TotalRows;
+
+		RNG.Randomize();
+
+		// Initialize the arrays
+		BoidDataBytes = new byte[(int)TOTAL_BOIDS * 4 * 16]; // Each boid is 16 floats, 1 float = 4 bytes.
+		Globals = new float[13]; // 13 floats for the globals.
+
+		// 64 is the max number of boids per cell, we're just going to store their ID.
+		HashLookup = new byte[TotalCells * 4 * 64]; 
+		HashUpdate = new byte[TotalCells * 4 * 64];
+
+		HashSize = new byte[TotalCells * 4];
+
+
+		int[] HashSizeInts = new int[TotalCells];
+		System.Array.Fill(HashSizeInts, 0);
+		Buffer.BlockCopy(HashSizeInts, 0, HashSize, 0, HashSize.Length);
+		
+		int[] HashLookupInts = new int[TotalCells * 64];
+		System.Array.Fill(HashLookupInts, -1);
+		Buffer.BlockCopy(HashLookupInts, 0, HashLookup, 0, HashLookup.Length);
+		Buffer.BlockCopy(HashLookupInts, 0, HashUpdate, 0, HashUpdate.Length);
+		
 
 		// Setup and store the multimesh as a variable.
 		MultiMeshInstance = GetNode<MultiMeshInstance2D>("Multi_Mesh");
@@ -77,6 +127,7 @@ public partial class BoidManager : Node2D {
 		MultiMeshRID = Multimesh.GetRid();
 		Multimesh.InstanceCount = (int)TOTAL_BOIDS;
 
+		BuildMesh();
 
 		// This can 100% be Parallel.For'd, but I'd have to make the buffer like in the compute shader... Faster, but this only happens once.
 		// Loop until we reached the total number of boids
@@ -86,16 +137,23 @@ public partial class BoidManager : Node2D {
 			Vector2 pos = new Vector2(GD.Randf() * SCREEN_SIZE.X, GD.Randf() * SCREEN_SIZE.Y);
 			Transform2D transform = new Transform2D(rot, pos);
 
+			float Row = (float)Math.Floor(pos.Y / 60.0f);
+			float Column = (float)Math.Floor(pos.X / 60.0f);
+		
+			float SpatialBinID = (Row * TotalColumns) + Column;
+
 			// Because of how I made the mesh, we rotate the down direction so it's facing in the direction of its velocity.
-			Vector2 vel = Vector2.Down.Rotated(rot);
+			Vector2 vel = Vector2.Right.Rotated(rot);
 
 			float FlockID = (float)RNG.RandiRange(0, NUMBER_of_FLOCKS - 1);
 
 			// Apply the data to the multimesh instance. We can grab the entire buffer afterwards.
 			Multimesh.SetInstanceTransform2D(i, transform);
 			Multimesh.SetInstanceColor(i, Colors.White);
-			Multimesh.SetInstanceCustomData(i, new Color(vel.X, vel.Y, FlockID, 0.0f));
+			Multimesh.SetInstanceCustomData(i, new Color(vel.X, vel.Y, FlockID, SpatialBinID));
 		}
+		
+		// Don't care about the spatial bin on the first frame, less headache.
 
 		// Setup the location of the boundry lines.
 		// The boundry lines are where the boids will start turning around if they exceed it.
@@ -112,6 +170,9 @@ public partial class BoidManager : Node2D {
 
 		// Then turn everything into bytes.
 		Buffer.BlockCopy(BoidData, 0, BoidDataBytes, 0, BoidDataBytes.Length);
+
+		Buffer.BlockCopy(HashLookupInts, 0, HashLookup, 0, HashLookup.Length);
+		
 	}
 
 
@@ -143,6 +204,7 @@ public partial class BoidManager : Node2D {
 		Globals[9] = SCREEN_SIZE.X;
 		Globals[10] = SCREEN_SIZE.Y;
 		Globals[11] = BOUNDRY_TURN;
+		Globals[12] = (float)GetPhysicsProcessDeltaTime();
 	}
 
 
@@ -156,7 +218,7 @@ public partial class BoidManager : Node2D {
 		byte[] OutputDataBytes = new byte[BoidDataBytes.Length];
 		Buffer.BlockCopy(BoidDataBytes, 0, OutputDataBytes, 0, OutputDataBytes.Length);
 		
-		
+
 		// Restrict, Readonly
 		DataBuffer = RD.StorageBufferCreate((uint)BoidDataBytes.Length, BoidDataBytes);
 		RDUniform DataUniform = new RDUniform() {
@@ -164,7 +226,6 @@ public partial class BoidManager : Node2D {
 			Binding = 0
 		};
 		DataUniform.AddId(DataBuffer);
-		
 		
 		// Restrict
 		OutputDataBuffer = RD.StorageBufferCreate((uint)OutputDataBytes.Length, OutputDataBytes);
@@ -174,18 +235,44 @@ public partial class BoidManager : Node2D {
 		};
 		OutputDataUniform.AddId(OutputDataBuffer);
 		
-		
 		// Restrict, Readonly
 		GlobalBuffer = RD.StorageBufferCreate((uint)GlobalBytes.Length, GlobalBytes);
 		RDUniform GlobalUniform = new RDUniform() {
 			UniformType = RenderingDevice.UniformType.StorageBuffer,
-			Binding = 4
+			Binding = 5
 		};
 		GlobalUniform.AddId(GlobalBuffer);
 
 
+		// Spatial Hashing
+		// Restrict, readonly
+		HashLookupBuffer = RD.StorageBufferCreate((uint)HashLookup.Length, HashLookup);
+		RDUniform HashLookupUniform = new RDUniform() {
+			UniformType = RenderingDevice.UniformType.StorageBuffer,
+			Binding = 2
+		};
+		HashLookupUniform.AddId(HashLookupBuffer);
+		
+		// Restrict
+		HashUpdateBuffer = RD.StorageBufferCreate((uint)HashUpdate.Length, HashUpdate);
+		RDUniform HashUpdateUniform = new RDUniform() {
+			UniformType = RenderingDevice.UniformType.StorageBuffer,
+			Binding = 3
+		};
+		HashUpdateUniform.AddId(HashUpdateBuffer);
+		
+		// Restrict
+		HashSizeBuffer = RD.StorageBufferCreate((uint)HashSize.Length, HashSize);
+		RDUniform HashSizeUniform = new RDUniform() {
+			UniformType = RenderingDevice.UniformType.StorageBuffer,
+			Binding = 4
+		};
+		HashSizeUniform.AddId(HashSizeBuffer);
+		
+
+
 		// Setup the uniform set and pipeline.
-		UniformSet = RD.UniformSetCreate(new Array<RDUniform> { DataUniform, OutputDataUniform, GlobalUniform }, Shader, 0);
+		UniformSet = RD.UniformSetCreate(new Array<RDUniform> { DataUniform, OutputDataUniform, GlobalUniform, HashLookupUniform, HashUpdateUniform, HashSizeUniform }, Shader, 0);
 		Pipeline = RD.ComputePipelineCreate(Shader);
 	}
 
@@ -202,6 +289,10 @@ public partial class BoidManager : Node2D {
 		// Update the buffers...
 		_ = RD.BufferUpdate(DataBuffer, 0, (uint)BoidDataBytes.Length, BoidDataBytes);
 		_ = RD.BufferUpdate(GlobalBuffer, 0, (uint)GlobalBytes.Length, GlobalBytes);
+
+		_ = RD.BufferUpdate(HashLookupBuffer, 0, (uint)HashLookup.Length, HashLookup);
+		_ = RD.BufferUpdate(HashUpdateBuffer, 0, (uint)HashUpdate.Length, HashUpdate);
+		_ = RD.BufferUpdate(HashSizeBuffer, 0, (uint)HashSize.Length, HashSize);
 	}
 
 
@@ -232,6 +323,7 @@ public partial class BoidManager : Node2D {
 	// Gets the results from the GPU and applies it to the multimesh.
 	private void GetResultsFromGPU() {
 		BoidDataBytes = RD.BufferGetData(OutputDataBuffer);
+		HashLookup = RD.BufferGetData(HashUpdateBuffer);
 		
 		float[] ConvertedBoidData = new float[BoidDataBytes.Length / 4];
 		Buffer.BlockCopy(BoidDataBytes, 0, ConvertedBoidData, 0, BoidDataBytes.Length);
@@ -247,6 +339,17 @@ public partial class BoidManager : Node2D {
 		//GD.PrintT(ConvertedBoidData[(id * 16) + 8], ConvertedBoidData[(id * 16) + 9], ConvertedBoidData[(id * 16) + 10], ConvertedBoidData[(id * 16) + 11]);
 		//GD.PrintT("Custom:");
 		//GD.PrintT(ConvertedBoidData[(id * 16) + 12], ConvertedBoidData[(id * 16) + 13], ConvertedBoidData[(id * 16) + 14], ConvertedBoidData[(id * 16) + 15]);
+
+		int[] ConvertedHashData = new int[HashUpdate.Length / 4];
+		Buffer.BlockCopy(HashUpdate, 0, ConvertedHashData, 0, HashUpdate.Length);
+
+		int[] CellData = new int[64];
+		for(int i = 0; i < 64; i++) {
+			ConvertedHashData[i] = CellData[i];
+		}
+
+		GD.PrintT("HashUpdate:");
+		GD.PrintT(CellData[0]);
 
 
 		// No need to use a for loop, Our compute shader outputs the data in a valid format for this.

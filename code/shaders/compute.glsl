@@ -21,23 +21,25 @@ layout(set = 0, binding = 1, std430) restrict buffer BoidUpdateBuffer {
 	float boid[];
 } BoidBufferUpdate;
 
-/*
-layout(set = 0, binding = 2, std430) restrict buffer BoidHashLocationBuffer {
-	float tile[];
+
+// Spatial Hashing
+layout(set = 0, binding = 2, std430) restrict readonly buffer BoidHashLocationBuffer {
+	int tile[][64];
 } BoidHashLookup;
 
-
+// This always starts out as all -1's...
 layout(set = 0, binding = 3, std430) restrict buffer BoidHashUpdateBuffer {
-	float tile[];
+	int tile[][64];
 } BoidHashUpdate;
 
-
+// This always starts out as all 0's...
 layout(set = 0, binding = 4, std430) restrict buffer BoidHashSizeBuffer {
-	float tile[][30];
+	int tile[];
 } BoidHashSizeLookup;
-*/
 
-layout(set = 0, binding = 4, std430) restrict readonly buffer globalBuffer {
+
+
+layout(set = 0, binding = 5, std430) restrict readonly buffer globalBuffer {
 	float VisualRange;
 	float SeperationDistance;
 	float SeperationWeight;
@@ -50,13 +52,14 @@ layout(set = 0, binding = 4, std430) restrict readonly buffer globalBuffer {
 	float Screen_X;
 	float Screen_Y;
 	float BoundryTurn;
+	float DeltaTime;
 } Global;
 
 
 
-float TotalRows = ceil(Global.Screen_Y / Global.VisualRange);
-float TotalColumns = ceil(Global.Screen_X / Global.VisualRange);
-float totalTiles = TotalRows * TotalColumns;
+int TotalRows = int(ceil(Global.Screen_Y / 60));
+int TotalColumns = int(ceil(Global.Screen_X / 60));
+int totalTiles = TotalRows * TotalColumns;
 
 
 
@@ -67,7 +70,54 @@ Boid createBoid(int boidID){
 	boid.Velocity = vec2(BoidBufferLookup.boid[boidID][12], BoidBufferLookup.boid[boidID][13]);
 	boid.FlockID = BoidBufferLookup.boid[boidID][14];
 	boid.SpatialBinID = BoidBufferLookup.boid[boidID][15];
+	
 	return boid;
+}
+
+
+
+int[9] getRelevantBins(int binID){
+	int relevantBins[9] = {-1, -1, -1, -1, binID, -1, -1, -1, -1};
+	
+	
+	bool LEFT = (binID % TotalColumns == 0);
+	bool RIGHT = (binID % TotalColumns == TotalColumns - 1);
+	bool TOP = (binID < TotalColumns);
+	bool BOTTOM = (binID > totalTiles - TotalColumns);
+	
+	
+	if(!TOP){
+		relevantBins[1] = binID - TotalColumns;
+		
+		if(!LEFT){
+			relevantBins[0] = binID - TotalColumns - 1;
+		}
+		
+		if(!RIGHT){
+			relevantBins[2] = binID - TotalColumns + 1;
+		}
+	}
+	
+	if(!BOTTOM){
+		relevantBins[7] = binID + TotalColumns;
+		if(!LEFT){
+			relevantBins[6] = binID + TotalColumns - 1;
+		}
+		
+		if(!RIGHT){
+			relevantBins[8] = binID + TotalColumns + 1;
+		}
+	}
+	
+	if(!LEFT){
+		relevantBins[3] = binID - 1;
+	}
+	
+	if(!RIGHT){
+		relevantBins[5] = binID + 1;
+	}
+	
+	return relevantBins;
 }
 
 
@@ -83,26 +133,33 @@ vec2 calculateVelocity(Boid thisBoid, int boidID){
 		vec2 seperationVector = vec2(0.0);
 		vec2 alignmentVector = vec2(0.0);
 		vec2 cohesionVector = vec2(0.0);
-				
-		// Otherwise loop through all the other boids in existance (n^2 yuck)
-		for(int i = 0; i < Global.TotalBoids; i++){
-			if(i == boidID) continue; // Skip self
-			
-			Boid otherBoid = createBoid(i);
-			if(otherBoid.FlockID != thisBoid.FlockID) continue; // Skip other flocks, maybe make them actively avoid other flocks later idk.
-			// if(otherBoid.SpatialBinID != thisBoid.SpatialBinID) continue; // Skip boids that aren't in the same bin... There is a better way to do this. I'll add it later.
-			
-			float distanceToOtherBoid = distance(thisBoid.Position, otherBoid.Position);
 		
-			if(distanceToOtherBoid < Global.VisualRange){
-				float distanceSquared = distanceToOtherBoid * distanceToOtherBoid;
+		int[] relevantBins = getRelevantBins(int(thisBoid.SpatialBinID));
+		
+		for(int i = 0; i < 9; i++){
+			if(relevantBins[i] == -1) continue; // Skip bins if unneeded
+			int[64] bin = BoidHashLookup.tile[relevantBins[i]];
 			
-				if(distanceSquared < seperationRangeSquared){
-					seperationVector += thisBoid.Position - otherBoid.Position;
-				} else {
-					alignmentVector += otherBoid.Velocity;
-					cohesionVector += otherBoid.Position;
-					nearbyBoids = nearbyBoids + 1;
+			for(int b = 0; b < 64; b++){
+				int otherBoidID = bin[b];
+				if(otherBoidID == -1) break; // Skip empty slots
+				if(otherBoidID == boidID) continue; // Skip self
+				
+				Boid otherBoid = createBoid(otherBoidID);
+				if(otherBoid.FlockID != thisBoid.FlockID) continue; // Skip other flocks, maybe make them actively avoid other flocks later idk.
+				
+				float distanceToOtherBoid = distance(thisBoid.Position, otherBoid.Position);
+		
+				if(distanceToOtherBoid < Global.VisualRange){
+					float distanceSquared = distanceToOtherBoid * distanceToOtherBoid;
+			
+					if(distanceSquared < seperationRangeSquared){
+						seperationVector += thisBoid.Position - otherBoid.Position;
+					} else {
+						alignmentVector += otherBoid.Velocity;
+						cohesionVector += otherBoid.Position;
+						nearbyBoids = nearbyBoids + 1;
+					}
 				}
 			}
 		}
@@ -209,6 +266,7 @@ vec3 getColor(vec2 vector){
 	float r = (vector.x + 1) / 2;
 	float b = (vector.y + 1) / 2;
 	float g = (r + b) / 2;
+	
 	return normalize(vec3(r, 1 - g,  b));
 }
 
@@ -217,7 +275,17 @@ vec3 getColor(vec2 vector){
 // Negative angle + 90 degrees (cause how the mesh is rotated)
 float getAngle(vec2 vector){
 	float angle = atan(vector.y, vector.x);
-	return -angle + radians(90);
+	
+	return -angle;
+}
+
+
+
+void addToHash(int boidID, int binID){
+	int index = atomicAdd(BoidHashSizeLookup.tile[binID], 1);
+	if(index < 64){ // Setting an arbitrary limit of 64 boids per bin, all others are ignored
+		BoidHashUpdate.tile[binID][index] = boidID;
+	}
 }
 
 
@@ -228,11 +296,12 @@ void compileBoid(int boidID, vec2 newPosition, vec2 newVelocity){
 	float SpatialBinID = -1.0;
 	
 	if(!isOutOfBounds(newPosition)){
-		float Row = floor(newPosition.y / Global.VisualRange);
-		float Column = floor(newPosition.x / Global.VisualRange);
+		float Row = floor(newPosition.y / 60);
+		float Column = floor(newPosition.x / 60);
 		
 		SpatialBinID = (Row * TotalColumns) + Column;
 	}
+	addToHash(boidID, int(SpatialBinID));
 	
 	int trueID = boidID * 16;
 
