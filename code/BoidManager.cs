@@ -31,7 +31,7 @@ public partial class BoidManager : Node2D {
 	[Export(PropertyHint.Range, "1,10,1")]
 	public int NUMBER_of_FLOCKS = 1;
 	[Export(PropertyHint.Range, "1,3,0.1")]
-	public float BOID_SIZE = 1;
+	public float BOID_SIZE = 1.5f;
 
 	[ExportSubgroup("Boid Senses")]
 	[Export]
@@ -39,7 +39,7 @@ public partial class BoidManager : Node2D {
 	[Export]
 	public float SEPERATION_DISTANCE = 8.0f;
 	[Export]
-	public float MOVEMENT_SPEED = 2.0f;
+	public float MOVEMENT_SPEED = 1.25f;
 
 	[ExportSubgroup("Boundry Settings")]
 	[Export]
