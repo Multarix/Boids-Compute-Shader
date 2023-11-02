@@ -74,8 +74,9 @@ offset_top = 900.0
 offset_right = 300.0
 offset_bottom = 960.0
 min_value = 1.0
-max_value = 10.0
-value = 1.0
+max_value = 2.0
+step = 0.01
+value = 1.25
 
 [node name="Label" type="Label" parent="Move_Speed"]
 texture_filter = 2
