@@ -25,7 +25,6 @@ glow_blend_mode = 1
 [node name="Scene" type="Node2D"]
 script = ExtResource("1_dpq6m")
 NUMBER_of_FLOCKS = 3
-BOID_SIZE = 1.5
 
 [node name="ColorRect" type="ColorRect" parent="."]
 offset_right = 3840.0
@@ -38,12 +37,12 @@ multimesh = SubResource("MultiMesh_joscb")
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="GUI" parent="CanvasLayer" instance=ExtResource("3_mumcm")]
+visible = false
 
 [node name="HideUI" type="Button" parent="CanvasLayer"]
 offset_left = -8.0
 offset_top = -8.0
 toggle_mode = true
-button_pressed = true
 shortcut = SubResource("Shortcut_i42gi")
 shortcut_feedback = false
 shortcut_in_tooltip = false
