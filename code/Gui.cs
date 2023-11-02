@@ -166,4 +166,8 @@ public partial class Gui : Control {
 			Input.MouseMode = Input.MouseModeEnum.Hidden;
 		}
 	}
+
+	public void OnExitGameClicked() {
+		GetTree().Quit();
+	}
 }

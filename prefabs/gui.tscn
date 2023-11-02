@@ -224,6 +224,14 @@ text = "FPS: NaN"
 vertical_alignment = 1
 script = ExtResource("2_qfygl")
 
+[node name="Button" type="Button" parent="."]
+layout_mode = 0
+offset_left = 1800.0
+offset_top = 1020.0
+offset_right = 1920.0
+offset_bottom = 1080.0
+text = "Exit Game"
+
 [connection signal="value_changed" from="View_Distance" to="." method="OnViewDistanceChanged"]
 [connection signal="value_changed" from="Seperation_Distance" to="." method="OnSeperationDistanceChanged"]
 [connection signal="value_changed" from="Move_Speed" to="." method="OnMoveSpeedChanged"]
@@ -231,3 +239,4 @@ script = ExtResource("2_qfygl")
 [connection signal="value_changed" from="Alignment" to="." method="OnAlignmentChanged"]
 [connection signal="value_changed" from="Seperation" to="." method="OnSeperationChanged"]
 [connection signal="toggled" from="Boundry_Button" to="." method="OnBoundryToggled"]
+[connection signal="pressed" from="Button" to="." method="OnExitGameClicked"]
